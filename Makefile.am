@@ -1,3 +1,3 @@
-SUBDIRS = src/manager
+SUBDIRS = src/manager src/replication
 
-VPATH = build
+VPATH = src

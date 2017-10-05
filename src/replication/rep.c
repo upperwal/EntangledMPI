@@ -1,9 +1,7 @@
 #include <stdio.h>
 
-#include <mpi.h>
-
 int
-main (void)
+what (void)
 {
   puts ("Hello World!");
   puts ("This is " PACKAGE_STRING ".");
