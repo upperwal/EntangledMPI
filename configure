@@ -12131,7 +12131,7 @@ ac_config_files="$ac_config_files Makefile src/manager/Makefile src/replication/
 
 
 # Checks for programs.
-#CC=${CC-/usr/bin/mpicc}
+#CC=${CC-mpicc}
 
 # Extract the first word of "mpicc", so it can be a program name with args.
 set dummy mpicc; ac_word=$2
