@@ -7,3 +7,5 @@ bin/*
 
 # Ignore Mac specific files
 .DS_Store
+
+autom4te.cache/*
