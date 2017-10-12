@@ -1,7 +1,7 @@
 #!/bin/bash
 
 AC_PREREQ([2.68])
-AC_INIT([fmpi], [1.0], [chengkai.me@gmail.com])
+AC_INIT([empi], [0.1], [a.upperwal@gmail.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
 AM_PROG_AR
