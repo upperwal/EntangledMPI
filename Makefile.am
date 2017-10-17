@@ -1,3 +1,5 @@
-SUBDIRS = src/manager src/replication
+bin_PROGRAMS =
+lib_LTLIBRARIES =
 
-VPATH = src
+include src/replication/Makefile.mk
+include src/manager/Makefile.mk
