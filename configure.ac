@@ -2,7 +2,7 @@
 
 AC_PREREQ([2.68])
 AC_INIT([empi], [0.1], [a.upperwal@gmail.com])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 
 AM_PROG_AR
 LT_INIT
