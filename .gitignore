@@ -9,6 +9,3 @@ bin/*
 .DS_Store
 
 autom4te.cache/
-build_aux/
-m4/
-aclocal.m4
