@@ -1,7 +1,5 @@
 #include <stdio.h>
-
-#include <funprint.h>
-
+#include "src/replication/funprint.h"
 int
 main (void)
 {

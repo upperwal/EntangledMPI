@@ -8,4 +8,7 @@ bin/*
 # Ignore Mac specific files
 .DS_Store
 
-./autom4te.cache/
+autom4te.cache/
+build_aux/
+m4/
+aclocal.m4
