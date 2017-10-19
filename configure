@@ -12166,7 +12166,7 @@ done
   done
 IFS=$as_save_IFS
 
-  test -z "$ac_cv_path_CC" && ac_cv_path_CC="mpicc"
+  test -z "$ac_cv_path_CC" && ac_cv_path_CC="cc"
   ;;
 esac
 fi
