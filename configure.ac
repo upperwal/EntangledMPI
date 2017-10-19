@@ -19,7 +19,7 @@ AC_CONFIG_FILES([Makefile])
 # Checks for programs.
 #CC=${CC-/usr/bin/mpicc}
 AC_ARG_VAR([CC],[the 'diff' program to use for test output comparison])
-AC_PATH_PROG([CC], [mpicc], [cc], [/usr/bin])
+AC_PATH_PROG([CC], [mpicc], [mpicc], [/usr/bin])
 #AC_PROG_CC(MPICC)
 #AX_MPI
 
