@@ -87,7 +87,7 @@ if [ "x$AUTOMAKE_VERSION" = "x" ] ; then
 fi
 # set to minimum acceptable version of libtool
 if [ "x$LIBTOOL_VERSION" = "x" ] ; then
-    LIBTOOL_VERSION=2.4.6
+    LIBTOOL_VERSION=2.4.2
 fi
 
 
