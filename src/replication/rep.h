@@ -1,5 +1,5 @@
-#ifndef __rep_h__
-#define __rep_h__
+#ifndef __REP_H__
+#define __REP_H__
 
 #include <stdio.h>
 #include <stdlib.h>

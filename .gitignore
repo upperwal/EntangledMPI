@@ -2,6 +2,9 @@
 build
 lib/*
 build_cray
+build_delta
+build_turing
+
 
 # Ignore any executables
 bin/*

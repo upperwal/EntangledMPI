@@ -1,6 +1,5 @@
 #include "stackseg.h"
 
-
 /* 
 *
 * Stack Migration:
@@ -28,7 +27,7 @@
 *  	Use address of main functions arguments ie. &argc. argc is defined relative to $rbp
 *	or $rsp and is the first thing in main function stack frame.
 *
-* NOTE: Remember to add 4 to &argc to get Lower Bound (LB)
+* NOTE: Remember to add 4 bytes to &argc to get Lower Bound (LB)
 *
 */
 
