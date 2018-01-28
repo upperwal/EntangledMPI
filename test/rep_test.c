@@ -25,6 +25,8 @@ int main(int argc, char** argv){
 
 	readProcMapFile();
 
+	MPI_Init(&argc, &argv);
+	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 	//printf("Init: %p | Uninit: %p\n", &a, &b);
 
 	/*

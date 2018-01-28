@@ -1,4 +1,16 @@
+#include "src/shared.h"
 #include "rep.h"
+
+int check_for_map_update() {
+	printf("Map Update: %d\n", sh);
+	if(setjmp(context) == 0) {
+		printf("Hello JMP\n");
+		longjmp(context, 1);
+	}
+	else {
+		printf("Back to the past.\n");
+	}
+}
 
 unsigned int parseChar(char c) {
 	if ('0' <= c && c <= '9') return c - '0';
