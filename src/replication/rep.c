@@ -1,15 +1,103 @@
-#include "src/shared.h"
 #include "rep.h"
 
-int check_for_map_update() {
-	printf("Map Update: %d\n", sh);
-	if(setjmp(context) == 0) {
-		printf("Hello JMP\n");
-		longjmp(context, 1);
+
+/* 
+*  1. Checks for file update pointer from the replication thread.
+*  2. If set, do a setjmp(), MPI_wait_all() and switch to alternate stack.
+*     sleep untill rep thread send signal.
+*/
+int is_file_update_set() {
+	// This function will execute on main user program thread.
+	if(map_status == MAP_UPDATED) {
+		char *newStack;
+		printf("Map Update: %d\n", map_status);
+		int s = setjmp(context);
+		if(s == 0) {
+
+			jmp_buf copy_context;
+
+			copy_jmp_buf(context, copy_context);
+
+			// Create some space for new temp stack.
+			newStack = malloc(sizeof(char) * 10000);
+			
+			// Stack starts from higher address.
+			setRSP(copy_context, newStack + 9999);
+
+			// Start execution on new temp stack.
+			longjmp(copy_context, 1);
+		}
+		else if(s == 1) {
+			// New stack will start right here.
+			printf("Back to the past.\n");
+			longjmp(context, 2);
+		}
+		else {
+			// Original stack will start here.
+			printf("Works Awesome!!!!\n");
+
+			// Free space allocated for temp stack.
+			free(newStack);
+
+			// Unlock global mutex, so that rep thread can lock it.
+			pthread_mutex_unlock(&global_mutex);
+
+			// lock to this mutex will result in suspension of this thread.
+			pthread_mutex_lock(&rep_time_mutex);
+
+			printf("Main thread block open.\n");
+
+			// Need to release it.
+			pthread_mutex_unlock(&rep_time_mutex);
+
+			// lock to global mutex means user's main thread is ready to execute.
+			pthread_mutex_lock(&global_mutex);
+		}
 	}
-	else {
-		printf("Back to the past.\n");
+
+}
+
+void copy_jmp_buf(jmp_buf source, jmp_buf dest) {
+	for(int i = 0; i<8; i++) {
+		dest[0].__jmpbuf[i] = source[0].__jmpbuf[i];
 	}
+	dest[0].__mask_was_saved = source[0].__mask_was_saved;
+}
+
+address getPC(jmp_buf context) {
+	address rip = context[0].__jmpbuf[JB_PC];
+	PTR_DECRYPT(rip);
+	return rip;
+}
+
+address getRBP(jmp_buf context) {
+	address rbp = context[0].__jmpbuf[JB_RBP];
+	PTR_DECRYPT(rbp);
+	return rbp;
+}
+
+address getRSP(jmp_buf context) {
+	address rsp = context[0].__jmpbuf[JB_RSP];
+	PTR_DECRYPT(rsp);
+	return rsp;
+}
+
+int setPC(jmp_buf context, address pc) {
+	PTR_ENCRYPT(pc);
+	context[0].__jmpbuf[JB_PC] = pc;
+	return 1;
+}
+
+int setRBP(jmp_buf context, address rbp) {
+	PTR_ENCRYPT(rbp);
+	context[0].__jmpbuf[JB_RBP] = rbp;
+	return 1;
+}
+
+int setRSP(jmp_buf context, address rsp) {
+	PTR_ENCRYPT(rsp);
+	context[0].__jmpbuf[JB_RSP] = rsp;
+	return 1;
 }
 
 unsigned int parseChar(char c) {

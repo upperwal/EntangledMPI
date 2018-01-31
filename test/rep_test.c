@@ -4,7 +4,8 @@
 
 #include <pthread.h>
 
-int a;
+int a = 80;
+int b;
 
 void *threadFunction(void *var) {
 	
@@ -23,11 +24,12 @@ int main(int argc, char** argv){
 
 	//stackMig(2);
 
-	readProcMapFile();
+	
 
 	MPI_Init(&argc, &argv);
+	readProcMapFile();
 	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
-	//printf("Init: %p | Uninit: %p\n", &a, &b);
+	printf("Init: %p | Uninit: %p\n", &a, &b);
 
 	/*
 	MPI_Comm comm = MPI_COMM_WORLD;
