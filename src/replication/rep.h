@@ -40,4 +40,9 @@ int setRSP(jmp_buf, address);
 
 void copy_jmp_buf(jmp_buf, jmp_buf);
 
+/* 
+*  Replication Related Code
+*/
+int initRep();
+
 #endif

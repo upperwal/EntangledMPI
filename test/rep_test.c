@@ -28,8 +28,23 @@ int main(int argc, char** argv){
 
 	MPI_Init(&argc, &argv);
 	readProcMapFile();
+	printf("In Main | main thread\n");
+
+	sleep(10);
+	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+
+	sleep(10);
+	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+
+	sleep(10);
+	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+
+	sleep(10);
 	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 	printf("Init: %p | Uninit: %p\n", &a, &b);
+
+
+	MPI_Finalize();
 
 	/*
 	MPI_Comm comm = MPI_COMM_WORLD;

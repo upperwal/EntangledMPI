@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include <setjmp.h>
 #include <pthread.h>
+#include <assert.h>
+
+#include "src/mpi/comm.h"
 
 #ifndef __SHARED_H__
 #define __SHARED_H__
@@ -26,8 +29,11 @@ enum MapStatus map_status;
         : "0" (variable));
 
 
-// pthread mutex
+/* pthread mutex */
 pthread_mutex_t global_mutex;
 pthread_mutex_t rep_time_mutex;
+
+Job *job_list;
+Node node;
 
 #endif

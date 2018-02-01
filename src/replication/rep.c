@@ -1,6 +1,5 @@
 #include "rep.h"
 
-
 /* 
 *  1. Checks for file update pointer from the replication thread.
 *  2. If set, do a setjmp(), MPI_wait_all() and switch to alternate stack.
@@ -8,6 +7,7 @@
 */
 int is_file_update_set() {
 	// This function will execute on main user program thread.
+	printf("Thread: Main | Function: is_file_update_set\n");
 	if(map_status == MAP_UPDATED) {
 		char *newStack;
 		printf("Map Update: %d\n", map_status);
@@ -30,14 +30,6 @@ int is_file_update_set() {
 		else if(s == 1) {
 			// New stack will start right here.
 			printf("Back to the past.\n");
-			longjmp(context, 2);
-		}
-		else {
-			// Original stack will start here.
-			printf("Works Awesome!!!!\n");
-
-			// Free space allocated for temp stack.
-			free(newStack);
 
 			// Unlock global mutex, so that rep thread can lock it.
 			pthread_mutex_unlock(&global_mutex);
@@ -52,9 +44,24 @@ int is_file_update_set() {
 
 			// lock to global mutex means user's main thread is ready to execute.
 			pthread_mutex_lock(&global_mutex);
+
+			longjmp(context, 2);
+		}
+		else {
+			// Original stack will start here.
+			printf("Works Awesome!!!!\n");
+
+			// Free space allocated for temp stack.
+			free(newStack);
+
+
 		}
 	}
 
+}
+
+int initRep() {
+	printf("Replication Init.\n");
 }
 
 void copy_jmp_buf(jmp_buf source, jmp_buf dest) {
