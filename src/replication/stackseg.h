@@ -4,7 +4,7 @@
 #ifndef __STACK_SEG_H__
 #define __STACK_SEG_H__
 
-
-int stackMig(int*);
+int transferStackSeg(MPI_Comm);
+int get_stack_size();
 
 #endif

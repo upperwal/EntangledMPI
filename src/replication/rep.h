@@ -4,7 +4,7 @@
 #include <mpi.h>
 #include <string.h>
 
-#include "src/shared.h"
+#include "src/replication/dataseg.h"
 
 #ifndef __REP_H__
 #define __REP_H__
@@ -43,6 +43,6 @@ void copy_jmp_buf(jmp_buf, jmp_buf);
 /* 
 *  Replication Related Code
 */
-int initRep();
+int initRep(MPI_Comm);
 
 #endif

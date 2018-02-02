@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "src/replication/rep.h"
-#include "src/replication/dataseg.h"
 
 #include <pthread.h>
 
@@ -14,21 +13,29 @@ void *threadFunction(void *var) {
 }
 
 int main(int argc, char** argv){
-	int rank, size, len;
+	int rank, size, len, oo = 9;
 	char procName[100];
 
 	pthread_t tid;
 
+	int* ab;
+	Init_Rep(ab);
+
 	pthread_create(&tid, NULL, threadFunction, NULL);
 
+	MPI_Init(ab, &argv);
 
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	//stackMig(2);
+	if(rank == 0 || rank == 2) {
+		oo = 65;
+	}
 
 	
 
-	MPI_Init(&argc, &argv);
-	readProcMapFile();
-	printf("In Main | main thread\n");
+	
+	//readProcMapFile();
+	//printf("In Main | main thread\n");
 
 	sleep(10);
 	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
@@ -41,7 +48,10 @@ int main(int argc, char** argv){
 
 	sleep(10);
 	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
-	printf("Init: %p | Uninit: %p\n", &a, &b);
+
+
+	printf("Rank: %d | [Users program] Value: %d | address: %p\n", rank, oo, &oo);
+	//printf("Init: %p | Uninit: %p\n", &a, &b);
 
 
 	MPI_Finalize();

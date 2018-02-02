@@ -1,5 +1,17 @@
 #include "rep.h"
 
+#include "src/shared.h"
+
+char *newStack;
+extern jmp_buf context;
+extern enum MapStatus map_status;
+
+/* pthread mutex */
+extern pthread_mutex_t global_mutex;
+extern pthread_mutex_t rep_time_mutex;
+
+extern address stackLowerAddress;
+
 /* 
 *  1. Checks for file update pointer from the replication thread.
 *  2. If set, do a setjmp(), MPI_wait_all() and switch to alternate stack.
@@ -7,9 +19,9 @@
 */
 int is_file_update_set() {
 	// This function will execute on main user program thread.
-	printf("Thread: Main | Function: is_file_update_set\n");
+	//printf("Thread: Main | Function: is_file_update_set | newStack Address: %p\n", &newStack);
 	if(map_status == MAP_UPDATED) {
-		char *newStack;
+		
 		printf("Map Update: %d\n", map_status);
 		int s = setjmp(context);
 		if(s == 0) {
@@ -60,8 +72,22 @@ int is_file_update_set() {
 
 }
 
-int initRep() {
+int initRep(MPI_Comm job_comm) {
 	printf("Replication Init.\n");
+
+	/*int rank, size;
+	MPI_Comm_rank(job_comm, &rank);
+	MPI_Comm_size(job_comm, &size);
+
+	printf("Original Rank: %d | Job Id: %d | Job Rank: %d | Job comm size: %d\n", node.rank, node.job_id, rank, size);*/
+
+	// Init Data Segment
+	transferDataSeg(job_comm);
+
+	// Init Stack Segment
+	transferStackSeg(job_comm);
+
+	printf("Replication Complete.\n");
 }
 
 void copy_jmp_buf(jmp_buf source, jmp_buf dest) {

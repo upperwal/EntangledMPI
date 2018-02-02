@@ -392,15 +392,15 @@ hello_SOURCES = src/manager/main.c src/replication/funprint.c src/replication/fu
 reptest_LDADD = libreplication.la
 reptest_SOURCES = test/rep_test.c
 reptest_LDFLAGS = -no-install
-reptest_CFLAGS = -g -O0 -static
+reptest_CFLAGS = -g -O0 -dynamic
 datasegtranstest_LDADD = libreplication.la
 datasegtranstest_SOURCES = test/dataseg_transfer_test.c
 datasegtranstest_LDFLAGS = -no-install
-datasegtranstest_CFLAGS = -g -O0 -static
+datasegtranstest_CFLAGS = -g -O0 -dynamic
 stacksegtranstest_LDADD = libreplication.la
 stacksegtranstest_SOURCES = test/stackseg_transfer_test.c
 stacksegtranstest_LDFLAGS = -no-install
-stacksegtranstest_CFLAGS = -g -O0 -static
+stacksegtranstest_CFLAGS = -g -O0 -dynamic
 all: all-am
 
 .SUFFIXES:

@@ -3,26 +3,14 @@
 #include <assert.h>
 #include <mpi.h>
 
+#include "src/shared.h"
+
 #ifndef __COMM_H__
 #define __COMM_H__
 
-/* 
-*  Structure to hold each node's new rank. This will work as a wrapper to 
-*  existing comms 
-*/
-typedef struct Nodes {
-	int job_id;
-	int rank;
-	int age;
-} Node;
-
-typedef struct Jobs {
-	int job_id;
-	int worker_count;
-	int *rank_list;
-} Job;
-
-int init_nodes(char *, Job **, Node *);
+int init_node(char *, Job **, Node *);
 int parse_map_file(char *, Job **, Node *);
+
+int create_migration_comm(MPI_Comm *);
 
 #endif
