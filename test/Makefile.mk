@@ -2,7 +2,7 @@ noinst_PROGRAMS = reptest datasegtranstest stacksegtranstest
 reptest_LDADD = libreplication.la
 reptest_SOURCES = test/rep_test.c
 reptest_LDFLAGS = -no-install
-reptest_CFLAGS = -g -O0 -dynamic
+reptest_CFLAGS = -g -O2 -dynamic
 
 datasegtranstest_LDADD = libreplication.la
 datasegtranstest_SOURCES = test/dataseg_transfer_test.c

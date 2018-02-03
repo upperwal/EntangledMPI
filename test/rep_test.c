@@ -12,30 +12,48 @@ void *threadFunction(void *var) {
 	printf("Thread: Add: %p\n", &var);
 }
 
+void f4(int *a) {
+	*a = 96;
+}
+
+void f3(int *a) {
+	f4(a);
+}
+
+void f2(int *a) {
+	f3(a);
+} 
+
+void f1(int *a) {
+	f2(a);
+}
+
 int main(int argc, char** argv){
 	int rank, size, len, oo = 9;
 	char procName[100];
 
-	pthread_t tid;
+	//PMPI_Init(&argc, &argv);
 
-	int* ab;
-	Init_Rep(ab);
-
-	pthread_create(&tid, NULL, threadFunction, NULL);
-
-	MPI_Init(ab, &argv);
+	MPI_Init(&argc, &argv);
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	//stackMig(2);
-	if(rank == 0 || rank == 2) {
-		oo = 65;
+	if(rank == 0) {
+		f1(&oo);
 	}
+	else {
+		oo = 77;
+	}
+
+	printf("[User Code] Rank: %d\n", rank);
 
 	
 
 	
 	//readProcMapFile();
 	//printf("In Main | main thread\n");
+
+	MPI_Barrier(MPI_COMM_WORLD);
 
 	sleep(10);
 	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);

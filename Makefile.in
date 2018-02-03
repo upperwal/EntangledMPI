@@ -387,12 +387,12 @@ lib_LTLIBRARIES = libreplication.la
 libreplication_la_SOURCES = src/mpi/init.c src/mpi/comm.c \
 	src/replication/rep.c src/replication/dataseg.c \
 	src/replication/stackseg.c src/misc/file.c
-libreplication_la_CFLAGS = -g -o0 -dynamic
+libreplication_la_CFLAGS = -g -O2 -dynamic
 hello_SOURCES = src/manager/main.c src/replication/funprint.c src/replication/funprint.h
 reptest_LDADD = libreplication.la
 reptest_SOURCES = test/rep_test.c
 reptest_LDFLAGS = -no-install
-reptest_CFLAGS = -g -O0 -dynamic
+reptest_CFLAGS = -g -O2 -dynamic
 datasegtranstest_LDADD = libreplication.la
 datasegtranstest_SOURCES = test/dataseg_transfer_test.c
 datasegtranstest_LDFLAGS = -no-install
