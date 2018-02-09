@@ -1,5 +1,141 @@
 #include "rep.h"
 
+#include "src/shared.h"
+
+char *newStack;
+extern jmp_buf context;
+extern enum MapStatus map_status;
+
+/* pthread mutex */
+extern pthread_mutex_t global_mutex;
+extern pthread_mutex_t rep_time_mutex;
+
+extern address stackLowerAddress;
+
+/* 
+*  1. Checks for file update pointer from the replication thread.
+*  2. If set, do a setjmp(), MPI_wait_all() and switch to alternate stack.
+*     sleep untill rep thread send signal.
+*/
+int is_file_update_set() {
+	// This function will execute on main user program thread.
+	//printf("Thread: Main | Function: is_file_update_set | newStack Address: %p\n", &newStack);
+	if(map_status == MAP_UPDATED) {
+		
+		printf("Map Update: %d\n", map_status);
+		int s = setjmp(context);
+		if(s == 0) {
+
+			jmp_buf copy_context;
+
+			copy_jmp_buf(context, copy_context);
+
+			// Create some space for new temp stack.
+			newStack = malloc(sizeof(char) * 10000);
+			
+			// Stack starts from higher address.
+			setRSP(copy_context, newStack + 9999);
+
+			// Start execution on new temp stack.
+			longjmp(copy_context, 1);
+		}
+		else if(s == 1) {
+			// New stack will start right here.
+			printf("Back to the past.\n");
+
+			// Unlock global mutex, so that rep thread can lock it.
+			pthread_mutex_unlock(&global_mutex);
+
+			// lock to this mutex will result in suspension of this thread.
+			pthread_mutex_lock(&rep_time_mutex);
+
+			printf("Main thread block open.\n");
+
+			// Need to release it.
+			pthread_mutex_unlock(&rep_time_mutex);
+
+			// lock to global mutex means user's main thread is ready to execute.
+			pthread_mutex_lock(&global_mutex);
+
+			longjmp(context, 2);
+		}
+		else {
+			// Original stack will start here.
+			printf("Works Awesome!!!!\n");
+
+			// Free space allocated for temp stack.
+			free(newStack);
+
+
+		}
+	}
+
+}
+
+int init_rep(MPI_Comm job_comm) {
+	printf("Replication Init.\n");
+
+	/*int rank, size;
+	MPI_Comm_rank(job_comm, &rank);
+	MPI_Comm_size(job_comm, &size);
+
+	printf("Original Rank: %d | Job Id: %d | Job Rank: %d | Job comm size: %d\n", node.rank, node.job_id, rank, size);*/
+
+	// Init Data Segment
+	transfer_data_seg(job_comm);
+
+	// Init Stack Segment
+	transfer_stack_seg(job_comm);
+
+	// Init Heap Segment
+	transfer_heap_seg(job_comm);
+
+	printf("Replication Complete.\n");
+}
+
+void copy_jmp_buf(jmp_buf source, jmp_buf dest) {
+	for(int i = 0; i<8; i++) {
+		dest[0].__jmpbuf[i] = source[0].__jmpbuf[i];
+	}
+	dest[0].__mask_was_saved = source[0].__mask_was_saved;
+}
+
+address getPC(jmp_buf context) {
+	address rip = context[0].__jmpbuf[JB_PC];
+	PTR_DECRYPT(rip);
+	return rip;
+}
+
+address getRBP(jmp_buf context) {
+	address rbp = context[0].__jmpbuf[JB_RBP];
+	PTR_DECRYPT(rbp);
+	return rbp;
+}
+
+address getRSP(jmp_buf context) {
+	address rsp = context[0].__jmpbuf[JB_RSP];
+	PTR_DECRYPT(rsp);
+	return rsp;
+}
+
+int setPC(jmp_buf context, address pc) {
+	PTR_ENCRYPT(pc);
+	context[0].__jmpbuf[JB_PC] = pc;
+	return 1;
+}
+
+int setRBP(jmp_buf context, address rbp) {
+	PTR_ENCRYPT(rbp);
+	context[0].__jmpbuf[JB_RBP] = rbp;
+	return 1;
+}
+
+int setRSP(jmp_buf context, address rsp) {
+	PTR_ENCRYPT(rsp);
+	context[0].__jmpbuf[JB_RSP] = rsp;
+	return 1;
+}
+
 unsigned int parseChar(char c) {
 	if ('0' <= c && c <= '9') return c - '0';
     if ('a' <= c && c <= 'f') return 10 + c - 'a';

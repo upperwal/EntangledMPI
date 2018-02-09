@@ -1,4 +1,10 @@
 #include <stdio.h>
 #include <mpi.h>
 
-int stackMig(int*);
+#ifndef __STACK_SEG_H__
+#define __STACK_SEG_H__
+
+int transfer_stack_seg(MPI_Comm);
+int get_stack_size();
+
+#endif

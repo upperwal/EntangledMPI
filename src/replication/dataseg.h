@@ -1,6 +1,13 @@
 #include <stdio.h>
 #include <mpi.h>
 
-int transferDataSeg(int, MPI_Comm);
-int transferInitDataSeg(int, MPI_Comm);
-int transferUnInitDataSeg(int, MPI_Comm);
+#include "src/mpi/comm.h"
+
+#ifndef __DATA_SEG_H__
+#define __DATA_SEG_H__
+
+int transfer_data_seg(MPI_Comm);
+int transfer_init_data_seg(MPI_Comm);
+int transfer_uninit_data_seg(MPI_Comm);
+
+#endif

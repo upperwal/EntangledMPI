@@ -4,6 +4,7 @@
 int main(int argc, char** argv){
 	MPI_Init(NULL, NULL);
 	argc = 300;
-	stackMig(&argc);
+	//stackMig(&argc);
 	MPI_Finalize();
+	return 1;
 }
