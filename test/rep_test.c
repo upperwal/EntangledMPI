@@ -6,14 +6,23 @@
 int a = 80;
 int b;
 
-void *threadFunction(void *var) {
-	
-	int a = 9;
-	printf("Thread: Add: %p\n", &var);
-}
+
 
 void f4(int *a) {
+
 	*a = 96;
+
+	sleep(10);
+	MPI_Send(&a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+
+	sleep(10);
+	MPI_Send(&a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+
+	sleep(10);
+	MPI_Send(&a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+
+	sleep(10);
+	MPI_Send(&a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 }
 
 void f3(int *a) {
@@ -31,6 +40,8 @@ void f1(int *a) {
 int main(int argc, char** argv){
 	int rank, size, len, oo = 9;
 	char procName[100];
+	int *a, *b;
+	char *c;
 
 	//PMPI_Init(&argc, &argv);
 
@@ -39,10 +50,24 @@ int main(int argc, char** argv){
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	//stackMig(2);
 	if(rank == 0) {
+		rep_malloc(&a, sizeof(int));
+		*a = 43;
 		f1(&oo);
 	}
 	else {
 		oo = 77;
+
+		sleep(10);
+		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+
+		sleep(10);
+		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+
+		sleep(10);
+		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+
+		sleep(10);
+		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 	}
 
 	printf("[User Code] Rank: %d\n", rank);
@@ -55,20 +80,12 @@ int main(int argc, char** argv){
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	sleep(10);
-	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
-
-	sleep(10);
-	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
-
-	sleep(10);
-	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
-
-	sleep(10);
-	MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+	
 
 
 	printf("Rank: %d | [Users program] Value: %d | address: %p\n", rank, oo, &oo);
+	if(rank == 0)
+		printf("Rank: %d | [Users program] Heap Val: %d\n", rank, *a);
 	//printf("Init: %p | Uninit: %p\n", &a, &b);
 
 

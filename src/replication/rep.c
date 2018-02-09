@@ -72,7 +72,7 @@ int is_file_update_set() {
 
 }
 
-int initRep(MPI_Comm job_comm) {
+int init_rep(MPI_Comm job_comm) {
 	printf("Replication Init.\n");
 
 	/*int rank, size;
@@ -82,10 +82,13 @@ int initRep(MPI_Comm job_comm) {
 	printf("Original Rank: %d | Job Id: %d | Job Rank: %d | Job comm size: %d\n", node.rank, node.job_id, rank, size);*/
 
 	// Init Data Segment
-	transferDataSeg(job_comm);
+	transfer_data_seg(job_comm);
 
 	// Init Stack Segment
-	transferStackSeg(job_comm);
+	transfer_stack_seg(job_comm);
+
+	// Init Heap Segment
+	transfer_heap_seg(job_comm);
 
 	printf("Replication Complete.\n");
 }

@@ -98,7 +98,7 @@ DIST_COMMON = $(srcdir)/src/Makefile.mk \
 	$(top_srcdir)/build_aux/ltmain.sh \
 	$(top_srcdir)/build_aux/missing
 noinst_PROGRAMS = reptest$(EXEEXT) datasegtranstest$(EXEEXT) \
-	stacksegtranstest$(EXEEXT)
+	stacksegtranstest$(EXEEXT) heapsegtranstest$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -148,6 +148,7 @@ am_libreplication_la_OBJECTS = src/mpi/libreplication_la-init.lo \
 	src/replication/libreplication_la-rep.lo \
 	src/replication/libreplication_la-dataseg.lo \
 	src/replication/libreplication_la-stackseg.lo \
+	src/replication/libreplication_la-heapseg.lo \
 	src/misc/libreplication_la-file.lo
 libreplication_la_OBJECTS = $(am_libreplication_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -167,6 +168,14 @@ datasegtranstest_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(datasegtranstest_CFLAGS) $(CFLAGS) \
 	$(datasegtranstest_LDFLAGS) $(LDFLAGS) -o $@
+am_heapsegtranstest_OBJECTS =  \
+	test/heapsegtranstest-heapseg_transfer_test.$(OBJEXT)
+heapsegtranstest_OBJECTS = $(am_heapsegtranstest_OBJECTS)
+heapsegtranstest_DEPENDENCIES = libreplication.la
+heapsegtranstest_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(heapsegtranstest_CFLAGS) $(CFLAGS) \
+	$(heapsegtranstest_LDFLAGS) $(LDFLAGS) -o $@
 am_hello_OBJECTS = src/manager/main.$(OBJEXT) \
 	src/replication/funprint.$(OBJEXT)
 hello_OBJECTS = $(am_hello_OBJECTS)
@@ -220,11 +229,12 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libreplication_la_SOURCES) $(datasegtranstest_SOURCES) \
+	$(heapsegtranstest_SOURCES) $(hello_SOURCES) \
+	$(reptest_SOURCES) $(stacksegtranstest_SOURCES)
+DIST_SOURCES = $(libreplication_la_SOURCES) \
+	$(datasegtranstest_SOURCES) $(heapsegtranstest_SOURCES) \
 	$(hello_SOURCES) $(reptest_SOURCES) \
 	$(stacksegtranstest_SOURCES)
-DIST_SOURCES = $(libreplication_la_SOURCES) \
-	$(datasegtranstest_SOURCES) $(hello_SOURCES) \
-	$(reptest_SOURCES) $(stacksegtranstest_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -386,10 +396,11 @@ top_srcdir = @top_srcdir@
 lib_LTLIBRARIES = libreplication.la
 libreplication_la_SOURCES = src/mpi/init.c src/mpi/comm.c \
 	src/replication/rep.c src/replication/dataseg.c \
-	src/replication/stackseg.c src/misc/file.c
+	src/replication/stackseg.c src/replication/heapseg.c \
+	src/misc/file.c
 libreplication_la_CFLAGS = -g -O2 -dynamic
 hello_SOURCES = src/manager/main.c src/replication/funprint.c src/replication/funprint.h
-reptest_LDADD = libreplication.la
+reptest_LDADD = libreplication.la 
 reptest_SOURCES = test/rep_test.c
 reptest_LDFLAGS = -no-install
 reptest_CFLAGS = -g -O2 -dynamic
@@ -401,6 +412,10 @@ stacksegtranstest_LDADD = libreplication.la
 stacksegtranstest_SOURCES = test/stackseg_transfer_test.c
 stacksegtranstest_LDFLAGS = -no-install
 stacksegtranstest_CFLAGS = -g -O0 -dynamic
+heapsegtranstest_LDADD = libreplication.la
+heapsegtranstest_SOURCES = test/heapseg_transfer_test.c
+heapsegtranstest_LDFLAGS = -no-install
+heapsegtranstest_CFLAGS = -g -O0 -dynamic
 all: all-am
 
 .SUFFIXES:
@@ -500,6 +515,9 @@ src/replication/libreplication_la-dataseg.lo:  \
 src/replication/libreplication_la-stackseg.lo:  \
 	src/replication/$(am__dirstamp) \
 	src/replication/$(DEPDIR)/$(am__dirstamp)
+src/replication/libreplication_la-heapseg.lo:  \
+	src/replication/$(am__dirstamp) \
+	src/replication/$(DEPDIR)/$(am__dirstamp)
 src/misc/$(am__dirstamp):
 	@$(MKDIR_P) src/misc
 	@: > src/misc/$(am__dirstamp)
@@ -581,6 +599,12 @@ test/datasegtranstest-dataseg_transfer_test.$(OBJEXT):  \
 datasegtranstest$(EXEEXT): $(datasegtranstest_OBJECTS) $(datasegtranstest_DEPENDENCIES) $(EXTRA_datasegtranstest_DEPENDENCIES) 
 	@rm -f datasegtranstest$(EXEEXT)
 	$(AM_V_CCLD)$(datasegtranstest_LINK) $(datasegtranstest_OBJECTS) $(datasegtranstest_LDADD) $(LIBS)
+test/heapsegtranstest-heapseg_transfer_test.$(OBJEXT):  \
+	test/$(am__dirstamp) test/$(DEPDIR)/$(am__dirstamp)
+
+heapsegtranstest$(EXEEXT): $(heapsegtranstest_OBJECTS) $(heapsegtranstest_DEPENDENCIES) $(EXTRA_heapsegtranstest_DEPENDENCIES) 
+	@rm -f heapsegtranstest$(EXEEXT)
+	$(AM_V_CCLD)$(heapsegtranstest_LINK) $(heapsegtranstest_OBJECTS) $(heapsegtranstest_LDADD) $(LIBS)
 src/manager/$(am__dirstamp):
 	@$(MKDIR_P) src/manager
 	@: > src/manager/$(am__dirstamp)
@@ -628,9 +652,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/mpi/$(DEPDIR)/libreplication_la-init.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/replication/$(DEPDIR)/funprint.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/replication/$(DEPDIR)/libreplication_la-dataseg.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/replication/$(DEPDIR)/libreplication_la-heapseg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/replication/$(DEPDIR)/libreplication_la-rep.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/replication/$(DEPDIR)/libreplication_la-stackseg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/datasegtranstest-dataseg_transfer_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/heapsegtranstest-heapseg_transfer_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/reptest-rep_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/stacksegtranstest-stackseg_transfer_test.Po@am__quote@
 
@@ -693,6 +719,13 @@ src/replication/libreplication_la-stackseg.lo: src/replication/stackseg.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libreplication_la_CFLAGS) $(CFLAGS) -c -o src/replication/libreplication_la-stackseg.lo `test -f 'src/replication/stackseg.c' || echo '$(srcdir)/'`src/replication/stackseg.c
 
+src/replication/libreplication_la-heapseg.lo: src/replication/heapseg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libreplication_la_CFLAGS) $(CFLAGS) -MT src/replication/libreplication_la-heapseg.lo -MD -MP -MF src/replication/$(DEPDIR)/libreplication_la-heapseg.Tpo -c -o src/replication/libreplication_la-heapseg.lo `test -f 'src/replication/heapseg.c' || echo '$(srcdir)/'`src/replication/heapseg.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/replication/$(DEPDIR)/libreplication_la-heapseg.Tpo src/replication/$(DEPDIR)/libreplication_la-heapseg.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='src/replication/heapseg.c' object='src/replication/libreplication_la-heapseg.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libreplication_la_CFLAGS) $(CFLAGS) -c -o src/replication/libreplication_la-heapseg.lo `test -f 'src/replication/heapseg.c' || echo '$(srcdir)/'`src/replication/heapseg.c
+
 src/misc/libreplication_la-file.lo: src/misc/file.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libreplication_la_CFLAGS) $(CFLAGS) -MT src/misc/libreplication_la-file.lo -MD -MP -MF src/misc/$(DEPDIR)/libreplication_la-file.Tpo -c -o src/misc/libreplication_la-file.lo `test -f 'src/misc/file.c' || echo '$(srcdir)/'`src/misc/file.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/misc/$(DEPDIR)/libreplication_la-file.Tpo src/misc/$(DEPDIR)/libreplication_la-file.Plo
@@ -713,6 +746,20 @@ test/datasegtranstest-dataseg_transfer_test.obj: test/dataseg_transfer_test.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/dataseg_transfer_test.c' object='test/datasegtranstest-dataseg_transfer_test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(datasegtranstest_CFLAGS) $(CFLAGS) -c -o test/datasegtranstest-dataseg_transfer_test.obj `if test -f 'test/dataseg_transfer_test.c'; then $(CYGPATH_W) 'test/dataseg_transfer_test.c'; else $(CYGPATH_W) '$(srcdir)/test/dataseg_transfer_test.c'; fi`
+
+test/heapsegtranstest-heapseg_transfer_test.o: test/heapseg_transfer_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(heapsegtranstest_CFLAGS) $(CFLAGS) -MT test/heapsegtranstest-heapseg_transfer_test.o -MD -MP -MF test/$(DEPDIR)/heapsegtranstest-heapseg_transfer_test.Tpo -c -o test/heapsegtranstest-heapseg_transfer_test.o `test -f 'test/heapseg_transfer_test.c' || echo '$(srcdir)/'`test/heapseg_transfer_test.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/heapsegtranstest-heapseg_transfer_test.Tpo test/$(DEPDIR)/heapsegtranstest-heapseg_transfer_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/heapseg_transfer_test.c' object='test/heapsegtranstest-heapseg_transfer_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(heapsegtranstest_CFLAGS) $(CFLAGS) -c -o test/heapsegtranstest-heapseg_transfer_test.o `test -f 'test/heapseg_transfer_test.c' || echo '$(srcdir)/'`test/heapseg_transfer_test.c
+
+test/heapsegtranstest-heapseg_transfer_test.obj: test/heapseg_transfer_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(heapsegtranstest_CFLAGS) $(CFLAGS) -MT test/heapsegtranstest-heapseg_transfer_test.obj -MD -MP -MF test/$(DEPDIR)/heapsegtranstest-heapseg_transfer_test.Tpo -c -o test/heapsegtranstest-heapseg_transfer_test.obj `if test -f 'test/heapseg_transfer_test.c'; then $(CYGPATH_W) 'test/heapseg_transfer_test.c'; else $(CYGPATH_W) '$(srcdir)/test/heapseg_transfer_test.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/heapsegtranstest-heapseg_transfer_test.Tpo test/$(DEPDIR)/heapsegtranstest-heapseg_transfer_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/heapseg_transfer_test.c' object='test/heapsegtranstest-heapseg_transfer_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(heapsegtranstest_CFLAGS) $(CFLAGS) -c -o test/heapsegtranstest-heapseg_transfer_test.obj `if test -f 'test/heapseg_transfer_test.c'; then $(CYGPATH_W) 'test/heapseg_transfer_test.c'; else $(CYGPATH_W) '$(srcdir)/test/heapseg_transfer_test.c'; fi`
 
 test/reptest-rep_test.o: test/rep_test.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(reptest_CFLAGS) $(CFLAGS) -MT test/reptest-rep_test.o -MD -MP -MF test/$(DEPDIR)/reptest-rep_test.Tpo -c -o test/reptest-rep_test.o `test -f 'test/rep_test.c' || echo '$(srcdir)/'`test/rep_test.c

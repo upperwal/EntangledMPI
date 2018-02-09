@@ -1,6 +1,6 @@
 lib_LTLIBRARIES += libreplication.la
 libreplication_la_SOURCES = 
-libreplication_la_CFLAGS = -g -O2 -dynamic
+libreplication_la_CFLAGS = -g -O0 -dynamic
 
 include src/manager/Makefile.mk
 include src/mpi/Makefile.mk

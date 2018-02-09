@@ -27,11 +27,11 @@ extern _end;				// Uninitialized Data Segment	: End
 
 extern Node node;
 
-int transferDataSeg(MPI_Comm job_comm) {
+int transfer_data_seg(MPI_Comm job_comm) {
 	printf("Data Segment Init\n");
 	
-	transferInitDataSeg(job_comm);
-	transferUnInitDataSeg(job_comm);
+	transfer_init_data_seg(job_comm);
+	transfer_uninit_data_seg(job_comm);
 
 	/*int updated_rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &updated_rank);
@@ -43,7 +43,7 @@ int transferDataSeg(MPI_Comm job_comm) {
 
 }
 
-int transferInitDataSeg(MPI_Comm job_comm) {
+int transfer_init_data_seg(MPI_Comm job_comm) {
 	#ifdef DEBUG
 	printf("Initialised Data Segment Init\n");
 	#endif
@@ -68,7 +68,7 @@ int transferInitDataSeg(MPI_Comm job_comm) {
 	return success;
 }
 
-int transferUnInitDataSeg(MPI_Comm job_comm) {
+int transfer_uninit_data_seg(MPI_Comm job_comm) {
 	#ifdef DEBUG
 	printf("UnInitialised Data Segment Init\n");
 	#endif

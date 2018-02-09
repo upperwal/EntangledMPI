@@ -56,7 +56,7 @@ void *rep_thread_init(void *_stackHigherAddress) {
 				printf("Main thread blocked\n");
 
 				// Replica creation code
-				initRep(job_comm);
+				init_rep(job_comm);
 
 				map_status = MAP_NOT_UPDATED;
 

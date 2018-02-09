@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
 		a = 10;
 
 	if(rank == 0 || rank == 1) {
-		transferDataSeg(job_comm);
+		transfer_data_seg(job_comm);
 	}
 
 	if(rank == 1) {

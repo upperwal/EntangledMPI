@@ -6,8 +6,8 @@
 #ifndef __DATA_SEG_H__
 #define __DATA_SEG_H__
 
-int transferDataSeg(MPI_Comm);
-int transferInitDataSeg(MPI_Comm);
-int transferUnInitDataSeg(MPI_Comm);
+int transfer_data_seg(MPI_Comm);
+int transfer_init_data_seg(MPI_Comm);
+int transfer_uninit_data_seg(MPI_Comm);
 
 #endif

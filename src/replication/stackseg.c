@@ -40,7 +40,7 @@ extern address stackLowerAddress;
 extern Node node;
 extern jmp_buf context;
 
-int transferStackSeg(MPI_Comm job_comm) {
+int transfer_stack_seg(MPI_Comm job_comm) {
 	
 
 	int stack_size;
