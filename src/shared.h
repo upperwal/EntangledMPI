@@ -32,6 +32,8 @@ typedef uint64_t address;
 
 
 enum NodeTransitState { NODE_DATA_NONE, NODE_DATA_SENDER, NODE_DATA_RECEIVER };
+enum NodeCheckpointMaster { NO, YES };
+enum CkptBackup { BACKUP_NO, BACKUP_YES };
 /* 
 *  Structure to hold each node's new rank. This will work as a wrapper to 
 *  existing comms 
@@ -42,6 +44,7 @@ typedef struct Nodes {
 	int age;
 	int jobs_count;
 	enum NodeTransitState node_transit_state;
+	enum NodeCheckpointMaster node_checkpoint_master;
 } Node;
 
 typedef struct Jobs {

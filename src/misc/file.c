@@ -1,7 +1,11 @@
 #include "file.h"
 
-int is_file_modified(char *file_name, time_t *last_update) {
+int is_file_modified(char *file_name, time_t *last_update, enum CkptBackup *ckpt_backup) {
 	struct stat file_attr;
+
+	if(*ckpt_backup == BACKUP_YES) {
+		return 1;
+	}
 
 	stat(file_name, &file_attr);
 	printf("Time: %d\n", file_attr.st_mtime);

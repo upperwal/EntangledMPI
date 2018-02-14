@@ -68,6 +68,10 @@ int is_file_update_set() {
 
 
 		}
+		return 1;
+	}
+	else {
+		return 0;
 	}
 
 }
@@ -115,6 +119,7 @@ address getRBP(jmp_buf context) {
 address getRSP(jmp_buf context) {
 	address rsp = context[0].__jmpbuf[JB_RSP];
 	PTR_DECRYPT(rsp);
+	printf("In getRSP: %p\n", rsp);
 	return rsp;
 }
 

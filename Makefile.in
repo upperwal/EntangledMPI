@@ -84,21 +84,23 @@ DIST_COMMON = $(srcdir)/src/Makefile.mk \
 	$(srcdir)/src/manager/Makefile.mk \
 	$(srcdir)/src/mpi/Makefile.mk \
 	$(srcdir)/src/replication/Makefile.mk \
-	$(srcdir)/src/misc/Makefile.mk $(srcdir)/test/Makefile.mk \
-	$(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(top_srcdir)/configure $(am__configure_deps) \
-	$(top_srcdir)/build_aux/depcomp build_aux/ar-lib \
-	build_aux/compile build_aux/config.guess build_aux/config.sub \
-	build_aux/depcomp build_aux/install-sh build_aux/missing \
-	build_aux/ltmain.sh $(top_srcdir)/build_aux/ar-lib \
-	$(top_srcdir)/build_aux/compile \
+	$(srcdir)/src/misc/Makefile.mk \
+	$(srcdir)/src/checkpoint/Makefile.mk \
+	$(srcdir)/test/Makefile.mk $(srcdir)/Makefile.in \
+	$(srcdir)/Makefile.am $(top_srcdir)/configure \
+	$(am__configure_deps) $(top_srcdir)/build_aux/depcomp \
+	build_aux/ar-lib build_aux/compile build_aux/config.guess \
+	build_aux/config.sub build_aux/depcomp build_aux/install-sh \
+	build_aux/missing build_aux/ltmain.sh \
+	$(top_srcdir)/build_aux/ar-lib $(top_srcdir)/build_aux/compile \
 	$(top_srcdir)/build_aux/config.guess \
 	$(top_srcdir)/build_aux/config.sub \
 	$(top_srcdir)/build_aux/install-sh \
 	$(top_srcdir)/build_aux/ltmain.sh \
 	$(top_srcdir)/build_aux/missing
 noinst_PROGRAMS = reptest$(EXEEXT) datasegtranstest$(EXEEXT) \
-	stacksegtranstest$(EXEEXT) heapsegtranstest$(EXEEXT)
+	stacksegtranstest$(EXEEXT) heapsegtranstest$(EXEEXT) \
+	checkpointtest$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -149,7 +151,8 @@ am_libreplication_la_OBJECTS = src/mpi/libreplication_la-init.lo \
 	src/replication/libreplication_la-dataseg.lo \
 	src/replication/libreplication_la-stackseg.lo \
 	src/replication/libreplication_la-heapseg.lo \
-	src/misc/libreplication_la-file.lo
+	src/misc/libreplication_la-file.lo \
+	src/checkpoint/libreplication_la-full_context.lo
 libreplication_la_OBJECTS = $(am_libreplication_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -160,6 +163,14 @@ libreplication_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(libreplication_la_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS)
+am_checkpointtest_OBJECTS =  \
+	test/checkpointtest-checkpoint_test.$(OBJEXT)
+checkpointtest_OBJECTS = $(am_checkpointtest_OBJECTS)
+checkpointtest_DEPENDENCIES = libreplication.la
+checkpointtest_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(checkpointtest_CFLAGS) $(CFLAGS) $(checkpointtest_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am_datasegtranstest_OBJECTS =  \
 	test/datasegtranstest-dataseg_transfer_test.$(OBJEXT)
 datasegtranstest_OBJECTS = $(am_datasegtranstest_OBJECTS)
@@ -228,10 +239,11 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libreplication_la_SOURCES) $(datasegtranstest_SOURCES) \
-	$(heapsegtranstest_SOURCES) $(hello_SOURCES) \
-	$(reptest_SOURCES) $(stacksegtranstest_SOURCES)
-DIST_SOURCES = $(libreplication_la_SOURCES) \
+SOURCES = $(libreplication_la_SOURCES) $(checkpointtest_SOURCES) \
+	$(datasegtranstest_SOURCES) $(heapsegtranstest_SOURCES) \
+	$(hello_SOURCES) $(reptest_SOURCES) \
+	$(stacksegtranstest_SOURCES)
+DIST_SOURCES = $(libreplication_la_SOURCES) $(checkpointtest_SOURCES) \
 	$(datasegtranstest_SOURCES) $(heapsegtranstest_SOURCES) \
 	$(hello_SOURCES) $(reptest_SOURCES) \
 	$(stacksegtranstest_SOURCES)
@@ -397,13 +409,13 @@ lib_LTLIBRARIES = libreplication.la
 libreplication_la_SOURCES = src/mpi/init.c src/mpi/comm.c \
 	src/replication/rep.c src/replication/dataseg.c \
 	src/replication/stackseg.c src/replication/heapseg.c \
-	src/misc/file.c
-libreplication_la_CFLAGS = -g -O2 -dynamic
+	src/misc/file.c src/checkpoint/full_context.c
+libreplication_la_CFLAGS = -g -O0 -dynamic
 hello_SOURCES = src/manager/main.c src/replication/funprint.c src/replication/funprint.h
 reptest_LDADD = libreplication.la 
 reptest_SOURCES = test/rep_test.c
 reptest_LDFLAGS = -no-install
-reptest_CFLAGS = -g -O2 -dynamic
+reptest_CFLAGS = -g -O0 -dynamic
 datasegtranstest_LDADD = libreplication.la
 datasegtranstest_SOURCES = test/dataseg_transfer_test.c
 datasegtranstest_LDFLAGS = -no-install
@@ -416,13 +428,17 @@ heapsegtranstest_LDADD = libreplication.la
 heapsegtranstest_SOURCES = test/heapseg_transfer_test.c
 heapsegtranstest_LDFLAGS = -no-install
 heapsegtranstest_CFLAGS = -g -O0 -dynamic
+checkpointtest_LDADD = libreplication.la
+checkpointtest_SOURCES = test/checkpoint_test.c
+checkpointtest_LDFLAGS = -no-install
+checkpointtest_CFLAGS = -g -O0 -dynamic
 all: all-am
 
 .SUFFIXES:
 .SUFFIXES: .c .lo .o .obj
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/src/Makefile.mk $(srcdir)/src/manager/Makefile.mk $(srcdir)/src/mpi/Makefile.mk $(srcdir)/src/replication/Makefile.mk $(srcdir)/src/misc/Makefile.mk $(srcdir)/test/Makefile.mk $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/src/Makefile.mk $(srcdir)/src/manager/Makefile.mk $(srcdir)/src/mpi/Makefile.mk $(srcdir)/src/replication/Makefile.mk $(srcdir)/src/misc/Makefile.mk $(srcdir)/src/checkpoint/Makefile.mk $(srcdir)/test/Makefile.mk $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -445,7 +461,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
 	esac;
-$(srcdir)/src/Makefile.mk $(srcdir)/src/manager/Makefile.mk $(srcdir)/src/mpi/Makefile.mk $(srcdir)/src/replication/Makefile.mk $(srcdir)/src/misc/Makefile.mk $(srcdir)/test/Makefile.mk:
+$(srcdir)/src/Makefile.mk $(srcdir)/src/manager/Makefile.mk $(srcdir)/src/mpi/Makefile.mk $(srcdir)/src/replication/Makefile.mk $(srcdir)/src/misc/Makefile.mk $(srcdir)/src/checkpoint/Makefile.mk $(srcdir)/test/Makefile.mk:
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -526,6 +542,15 @@ src/misc/$(DEPDIR)/$(am__dirstamp):
 	@: > src/misc/$(DEPDIR)/$(am__dirstamp)
 src/misc/libreplication_la-file.lo: src/misc/$(am__dirstamp) \
 	src/misc/$(DEPDIR)/$(am__dirstamp)
+src/checkpoint/$(am__dirstamp):
+	@$(MKDIR_P) src/checkpoint
+	@: > src/checkpoint/$(am__dirstamp)
+src/checkpoint/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) src/checkpoint/$(DEPDIR)
+	@: > src/checkpoint/$(DEPDIR)/$(am__dirstamp)
+src/checkpoint/libreplication_la-full_context.lo:  \
+	src/checkpoint/$(am__dirstamp) \
+	src/checkpoint/$(DEPDIR)/$(am__dirstamp)
 
 libreplication.la: $(libreplication_la_OBJECTS) $(libreplication_la_DEPENDENCIES) $(EXTRA_libreplication_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libreplication_la_LINK) -rpath $(libdir) $(libreplication_la_OBJECTS) $(libreplication_la_LIBADD) $(LIBS)
@@ -593,6 +618,12 @@ test/$(am__dirstamp):
 test/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) test/$(DEPDIR)
 	@: > test/$(DEPDIR)/$(am__dirstamp)
+test/checkpointtest-checkpoint_test.$(OBJEXT): test/$(am__dirstamp) \
+	test/$(DEPDIR)/$(am__dirstamp)
+
+checkpointtest$(EXEEXT): $(checkpointtest_OBJECTS) $(checkpointtest_DEPENDENCIES) $(EXTRA_checkpointtest_DEPENDENCIES) 
+	@rm -f checkpointtest$(EXEEXT)
+	$(AM_V_CCLD)$(checkpointtest_LINK) $(checkpointtest_OBJECTS) $(checkpointtest_LDADD) $(LIBS)
 test/datasegtranstest-dataseg_transfer_test.$(OBJEXT):  \
 	test/$(am__dirstamp) test/$(DEPDIR)/$(am__dirstamp)
 
@@ -634,6 +665,8 @@ stacksegtranstest$(EXEEXT): $(stacksegtranstest_OBJECTS) $(stacksegtranstest_DEP
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f src/checkpoint/*.$(OBJEXT)
+	-rm -f src/checkpoint/*.lo
 	-rm -f src/manager/*.$(OBJEXT)
 	-rm -f src/misc/*.$(OBJEXT)
 	-rm -f src/misc/*.lo
@@ -646,6 +679,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@src/checkpoint/$(DEPDIR)/libreplication_la-full_context.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/manager/$(DEPDIR)/main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/misc/$(DEPDIR)/libreplication_la-file.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/mpi/$(DEPDIR)/libreplication_la-comm.Plo@am__quote@
@@ -655,6 +689,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/replication/$(DEPDIR)/libreplication_la-heapseg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/replication/$(DEPDIR)/libreplication_la-rep.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/replication/$(DEPDIR)/libreplication_la-stackseg.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/checkpointtest-checkpoint_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/datasegtranstest-dataseg_transfer_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/heapsegtranstest-heapseg_transfer_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/reptest-rep_test.Po@am__quote@
@@ -733,6 +768,27 @@ src/misc/libreplication_la-file.lo: src/misc/file.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libreplication_la_CFLAGS) $(CFLAGS) -c -o src/misc/libreplication_la-file.lo `test -f 'src/misc/file.c' || echo '$(srcdir)/'`src/misc/file.c
 
+src/checkpoint/libreplication_la-full_context.lo: src/checkpoint/full_context.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libreplication_la_CFLAGS) $(CFLAGS) -MT src/checkpoint/libreplication_la-full_context.lo -MD -MP -MF src/checkpoint/$(DEPDIR)/libreplication_la-full_context.Tpo -c -o src/checkpoint/libreplication_la-full_context.lo `test -f 'src/checkpoint/full_context.c' || echo '$(srcdir)/'`src/checkpoint/full_context.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/checkpoint/$(DEPDIR)/libreplication_la-full_context.Tpo src/checkpoint/$(DEPDIR)/libreplication_la-full_context.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='src/checkpoint/full_context.c' object='src/checkpoint/libreplication_la-full_context.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libreplication_la_CFLAGS) $(CFLAGS) -c -o src/checkpoint/libreplication_la-full_context.lo `test -f 'src/checkpoint/full_context.c' || echo '$(srcdir)/'`src/checkpoint/full_context.c
+
+test/checkpointtest-checkpoint_test.o: test/checkpoint_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(checkpointtest_CFLAGS) $(CFLAGS) -MT test/checkpointtest-checkpoint_test.o -MD -MP -MF test/$(DEPDIR)/checkpointtest-checkpoint_test.Tpo -c -o test/checkpointtest-checkpoint_test.o `test -f 'test/checkpoint_test.c' || echo '$(srcdir)/'`test/checkpoint_test.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/checkpointtest-checkpoint_test.Tpo test/$(DEPDIR)/checkpointtest-checkpoint_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/checkpoint_test.c' object='test/checkpointtest-checkpoint_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(checkpointtest_CFLAGS) $(CFLAGS) -c -o test/checkpointtest-checkpoint_test.o `test -f 'test/checkpoint_test.c' || echo '$(srcdir)/'`test/checkpoint_test.c
+
+test/checkpointtest-checkpoint_test.obj: test/checkpoint_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(checkpointtest_CFLAGS) $(CFLAGS) -MT test/checkpointtest-checkpoint_test.obj -MD -MP -MF test/$(DEPDIR)/checkpointtest-checkpoint_test.Tpo -c -o test/checkpointtest-checkpoint_test.obj `if test -f 'test/checkpoint_test.c'; then $(CYGPATH_W) 'test/checkpoint_test.c'; else $(CYGPATH_W) '$(srcdir)/test/checkpoint_test.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/checkpointtest-checkpoint_test.Tpo test/$(DEPDIR)/checkpointtest-checkpoint_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/checkpoint_test.c' object='test/checkpointtest-checkpoint_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(checkpointtest_CFLAGS) $(CFLAGS) -c -o test/checkpointtest-checkpoint_test.obj `if test -f 'test/checkpoint_test.c'; then $(CYGPATH_W) 'test/checkpoint_test.c'; else $(CYGPATH_W) '$(srcdir)/test/checkpoint_test.c'; fi`
+
 test/datasegtranstest-dataseg_transfer_test.o: test/dataseg_transfer_test.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(datasegtranstest_CFLAGS) $(CFLAGS) -MT test/datasegtranstest-dataseg_transfer_test.o -MD -MP -MF test/$(DEPDIR)/datasegtranstest-dataseg_transfer_test.Tpo -c -o test/datasegtranstest-dataseg_transfer_test.o `test -f 'test/dataseg_transfer_test.c' || echo '$(srcdir)/'`test/dataseg_transfer_test.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/datasegtranstest-dataseg_transfer_test.Tpo test/$(DEPDIR)/datasegtranstest-dataseg_transfer_test.Po
@@ -794,6 +850,7 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+	-rm -rf src/checkpoint/.libs src/checkpoint/_libs
 	-rm -rf src/misc/.libs src/misc/_libs
 	-rm -rf src/mpi/.libs src/mpi/_libs
 	-rm -rf src/replication/.libs src/replication/_libs
@@ -1051,6 +1108,8 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f src/checkpoint/$(DEPDIR)/$(am__dirstamp)
+	-rm -f src/checkpoint/$(am__dirstamp)
 	-rm -f src/manager/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/manager/$(am__dirstamp)
 	-rm -f src/misc/$(DEPDIR)/$(am__dirstamp)
@@ -1072,7 +1131,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf src/manager/$(DEPDIR) src/misc/$(DEPDIR) src/mpi/$(DEPDIR) src/replication/$(DEPDIR) test/$(DEPDIR)
+	-rm -rf src/checkpoint/$(DEPDIR) src/manager/$(DEPDIR) src/misc/$(DEPDIR) src/mpi/$(DEPDIR) src/replication/$(DEPDIR) test/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-libtool distclean-tags
@@ -1120,7 +1179,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf src/manager/$(DEPDIR) src/misc/$(DEPDIR) src/mpi/$(DEPDIR) src/replication/$(DEPDIR) test/$(DEPDIR)
+	-rm -rf src/checkpoint/$(DEPDIR) src/manager/$(DEPDIR) src/misc/$(DEPDIR) src/mpi/$(DEPDIR) src/replication/$(DEPDIR) test/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

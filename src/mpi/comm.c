@@ -2,6 +2,8 @@
 
 extern Node node;
 
+extern enum CkptBackup ckpt_backup;
+
 int init_node(char *file_name, Job **job_list, Node *node) {
 	printf("Initiating Node and Jobs data from file.\n");
 	
@@ -15,7 +17,7 @@ int init_node(char *file_name, Job **job_list, Node *node) {
 	// job id 0 in the map file will not be initiated properly.
 	(*node).job_id = -1;
 
-	parse_map_file(file_name, job_list, node);
+	parse_map_file(file_name, job_list, node, &ckpt_backup);
 
 	// parse_map_file will set "node_transit_state" to "NODE_DATA_RECEIVER"
 	// because it thinks all nodes are newly added to this job.
@@ -27,7 +29,12 @@ int init_node(char *file_name, Job **job_list, Node *node) {
 	}
 }
 
-int parse_map_file(char *file_name, Job **job_list, Node *node) {
+int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup *ckpt_backup) {
+	
+	if(*ckpt_backup == BACKUP_YES) {
+		return 0;
+	}
+
 	FILE *pointer = fopen(file_name, "r");
 
 	if(pointer == NULL) {
@@ -74,6 +81,10 @@ int parse_map_file(char *file_name, Job **job_list, Node *node) {
 			
 			fscanf(pointer, "\t%d", &w_rank);
 
+			if(j == 0 && w_rank == my_rank) {
+				(*node).node_checkpoint_master = YES;
+			}
+
 			if(w_rank == my_rank && update_bit == 1) {
 				if((*node).job_id != j_id) {
 					(*node).age = 1;
@@ -102,17 +113,22 @@ int parse_map_file(char *file_name, Job **job_list, Node *node) {
 	}
 
 	for(int i=0; i<jobs; i++) {
-		printf("[Rep File Update] Original Rank: %d | Rank: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d\n", my_rank, (*node).rank, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1]);
+		printf("[Rep File Update] Original Rank: %d | Rank: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d | Checkpoint: %d\n", my_rank, (*node).rank, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1], (*node).node_checkpoint_master);
 	}
 }
 
 /* Returns 1 if comm is valid on this node, else 0. */
-int create_migration_comm(MPI_Comm *job_comm) {
+int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ckpt_backup) {
 	/* 								this^
 	*  This comm will contain all the processes which are either sending or receiving 
 	*  replication data. 
 	*/
 	int color, key, flag;
+
+	if(*ckpt_backup == BACKUP_YES) {
+		return 1;
+		*rep_flag = 0;
+	}
 
 	if(node.node_transit_state != NODE_DATA_NONE) {
 		color = node.job_id;
@@ -131,6 +147,10 @@ int create_migration_comm(MPI_Comm *job_comm) {
 		printf("Original Rank: %d | No comm created. | Job: %d\n", node.rank, node.job_id);
 	}
 
+	*rep_flag = flag;
+
 	PMPI_Comm_split(MPI_COMM_WORLD, color, key, job_comm);
-	return flag;
+
+	printf("Create Migration Comm: Rank: %d | FLAG_OR: %d | flag: %d | ckpt: %d\n", node.rank, (flag || node.node_checkpoint_master), flag, node.node_checkpoint_master);
+	return (flag || node.node_checkpoint_master);
 }

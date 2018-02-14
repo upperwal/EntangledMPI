@@ -1,0 +1,1 @@
+libreplication_la_SOURCES += 	src/checkpoint/full_context.c

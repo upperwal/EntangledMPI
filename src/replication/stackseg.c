@@ -4,7 +4,7 @@
 #include "src/replication/rep.h"
 
 /* 
-*
+* [Need an update: now using *argc to get higher end of stack]
 * Stack Migration:
 *  	If argc has value (decimal) 01 => (bits) 00000000 00000000 00000000 00000001 => (hex) 00 00 00 01
 *  				0000	|________|
