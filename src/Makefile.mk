@@ -1,6 +1,6 @@
 lib_LTLIBRARIES += libreplication.la
 libreplication_la_SOURCES = 
-libreplication_la_CFLAGS = -g -O0 -dynamic
+libreplication_la_CFLAGS = -dynamic -O0 -fno-stack-protector
 
 include src/manager/Makefile.mk
 include src/mpi/Makefile.mk

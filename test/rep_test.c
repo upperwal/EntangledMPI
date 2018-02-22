@@ -6,7 +6,7 @@
 
 #include <pthread.h>
 
-int a = 80;
+int initSeg = 80;
 int b;
 
 extern Node node;
@@ -58,20 +58,23 @@ int main(int argc, char** argv){
 
 	printf("Process ID: %d\n", pid);
 
-	if(node.rank == 1)
-		kill(pid, SIGBUS);
-
-	//while(1);
+	/*if(node.rank == 1)
+		kill(pid, SIGBUS);*/
+	/*int h = 9;
+	while(h);*/
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	//stackMig(2);
 	if(rank == 0) {
 		rep_malloc(&a, sizeof(int));
 		*a = 43;
+		initSeg = 1945;
 		f1(&oo);
+		
 	}
 	else {
 		oo = 77;
+		initSeg = 200000;
 
 		sleep(10);
 		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
@@ -97,11 +100,12 @@ int main(int argc, char** argv){
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-
-	printf("Rank: %d | [Users program] Value: %d | address: %p\n", rank, oo, &oo);
 	if(rank == 0)
-		printf("Rank: %d | [Users program] Heap Val: %d\n", rank, *a);
+		printf("Rank: %d | [Users program] Value: %d | address: %p\n", rank, *a, a);
+	/*if(rank == 0)
+		printf("Rank: %d | [Users program] Heap Val: %d\n", rank, *a);*/
 	//printf("Init: %p | Uninit: %p\n", &a, &b);
 
 

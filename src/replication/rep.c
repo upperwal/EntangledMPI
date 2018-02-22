@@ -12,6 +12,8 @@ extern pthread_mutex_t rep_time_mutex;
 
 extern address stackLowerAddress;
 
+extern Node node;
+
 /* 
 *  1. Checks for file update pointer from the replication thread.
 *  2. If set, do a setjmp(), MPI_wait_all() and switch to alternate stack.
@@ -77,7 +79,7 @@ int is_file_update_set() {
 }
 
 int init_rep(MPI_Comm job_comm) {
-	printf("Replication Init.\n");
+	printf("Rank: %d | Replication Init.\n", node.rank);
 
 	/*int rank, size;
 	MPI_Comm_rank(job_comm, &rank);
@@ -94,7 +96,7 @@ int init_rep(MPI_Comm job_comm) {
 	// Init Heap Segment
 	transfer_heap_seg(job_comm);
 
-	printf("Replication Complete.\n");
+	printf("Rank: %d | Replication Complete.\n", node.rank);
 }
 
 void copy_jmp_buf(jmp_buf source, jmp_buf dest) {

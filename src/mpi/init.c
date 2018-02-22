@@ -20,8 +20,8 @@ pthread_mutex_t rep_time_mutex;
 Job *job_list;
 Node node;
 
-char *map_file = "/home/mas/16/cdsabhi/entangledmpi/build_cray/replication.map";
-char *ckpt_file = "/home/mas/16/cdsabhi/entangledmpi/build_cray/ckpt/rank-%d.ckpt";
+char *map_file = "/home/mpiuser/entangledmpi/build_turing/replication.map";
+char *ckpt_file = "/home/mpiuser/entangledmpi/build_turing/ckpt/rank-%d.ckpt";
 
 // Restore from checkpoint files: YES | Do not restore: NO
 enum CkptBackup ckpt_backup;
@@ -107,13 +107,15 @@ int MPI_Init(int *argc, char ***argv) {
 
 	// Getting RBP only works if optimisation level is zero (O0).
 	// O1 removes RBP's use.
-	Init_Rep(stackStart);	// a macro to fetch RBP of main function.
+	/*Init_Rep(stackStart);	// a macro to fetch RBP of main function.
 	if(stackStart == 0) {
 		// OS kept values of program arguments this this address which is below main function frame.
 		// Writable to the user and same for each program. No harm to overwrite this data as it is same for
 		// all the nodes. [Same arguments passed]
 		stackStart = **argv;
-	}
+	}*/
+
+	stackStart = **argv;
 
 	printf("Address Stack new: %p\n", stackStart);
 	// Lock global mutex. This mutex will always be locked when user program is executing.
@@ -144,19 +146,19 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 	is_file_update_set();
 
 	// Not fault tolerant
-	if(node.node_checkpoint_master == YES) {
+	/*if(node.node_checkpoint_master == YES) {
 		for(int i=0; i<job_list[dest].worker_count; i++) {
 			//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);	
 			PMPI_Send(buf, count, datatype, (job_list[dest].rank_list)[i], tag, comm);
 		}
-	}
+	}*/
 }
 
 int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status) {
 	printf("In MPI_Recv()\n");
 	is_file_update_set();
 
-	PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm, status);
+	//PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm, status);
 }
 
 int MPI_Comm_rank(MPI_Comm comm, int *rank) {

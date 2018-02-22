@@ -113,7 +113,7 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 	}
 
 	for(int i=0; i<jobs; i++) {
-		printf("[Rep File Update] Original Rank: %d | Rank: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d | Checkpoint: %d\n", my_rank, (*node).rank, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1], (*node).node_checkpoint_master);
+		printf("[Rep File Update] Original Rank: %d | MyJobId: %d | Rank: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d | Checkpoint: %d\n", my_rank, (*node).job_id, (*node).rank, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1], (*node).node_checkpoint_master);
 	}
 }
 
@@ -148,6 +148,9 @@ int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ck
 	}
 
 	*rep_flag = flag;
+
+	printf("Before Split | Rank: %d\n", node.rank);
+	printf("Rank: %d | Color: %d | key: %d | job_comm: %p\n", node.rank, color, key, job_comm);
 
 	PMPI_Comm_split(MPI_COMM_WORLD, color, key, job_comm);
 

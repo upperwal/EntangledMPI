@@ -52,7 +52,11 @@ int transfer_init_data_seg(MPI_Comm job_comm) {
 	// TODO: Check if countBytes + 1 is valid.
 	int success;
 
-	success = MPI_Bcast(&__data_start, countBytes, MPI_BYTE, 0, job_comm);
+	success = PMPI_Bcast(&__data_start, countBytes, MPI_BYTE, 0, job_comm);
+
+	int ranktt;
+	PMPI_Comm_rank(job_comm, &ranktt);
+	printf("Sending init data seg: Rank: %d | Size: %d | Start Address: %d | Job_comm Rank: %d\n", node.rank, countBytes, &__data_start, ranktt);
 
 	/*if(rank == 0) {
 		success = MPI_Send(&__data_start, countBytes, MPI_BYTE, 1, 1, comm);
@@ -76,7 +80,13 @@ int transfer_uninit_data_seg(MPI_Comm job_comm) {
 	int countBytes = ((char *)&_end - (char *)&__bss_start);
 	int success;
 	
-	success = MPI_Bcast(&__bss_start, countBytes, MPI_BYTE, 0, job_comm);
+	success = PMPI_Bcast(&__bss_start, countBytes, MPI_BYTE, 0, job_comm);
+
+	int ranktt;
+	PMPI_Comm_rank(job_comm, &ranktt);
+
+	printf("Sending uninit data seg: Rank: %d | Size: %d | Start Address: %d | Job_comm Rank: %d\n", node.rank, countBytes, &__bss_start, ranktt);
+
 
 	/*#ifdef DEBUG
 	printf("Rank: %d | UnInit Seg Bytes: %d\n", rank, countBytes);

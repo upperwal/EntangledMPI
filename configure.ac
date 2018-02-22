@@ -5,6 +5,15 @@ AC_INIT([empi], [0.1], [a.upperwal@gmail.com])
 AC_CONFIG_AUX_DIR([build_aux])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 
+# prevent setting xFLAGS to default of -g -O2
+# https://ubuntuforums.org/showthread.php?t=1556520
+if test x"$CFLAGS" = x""; then
+  AC_SUBST(CFLAGS, [ ])
+fi
+if test x"$CXXFLAGS" = x""; then
+  AC_SUBST(CXXFLAGS, [ ])
+fi
+
 AM_PROG_CC_C_O
 
 AM_PROG_AR
