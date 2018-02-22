@@ -20,8 +20,8 @@ pthread_mutex_t rep_time_mutex;
 Job *job_list;
 Node node;
 
-char *map_file = "/home/mpiuser/entangledmpi/build_turing/replication.map";
-char *ckpt_file = "/home/mpiuser/entangledmpi/build_turing/ckpt/rank-%d.ckpt";
+char *map_file = "./replication.map";
+char *ckpt_file = "./ckpt/rank-%d.ckpt";
 
 // Restore from checkpoint files: YES | Do not restore: NO
 enum CkptBackup ckpt_backup;
