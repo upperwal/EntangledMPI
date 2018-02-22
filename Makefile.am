@@ -1,3 +1,5 @@
+AM_CFLAGS = $(REP_CFLAGS) -O0 -dynamic
+
 bin_PROGRAMS =
 lib_LTLIBRARIES =
 

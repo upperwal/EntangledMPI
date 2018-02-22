@@ -636,6 +636,9 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+REP_CFLAGS
+DISABLESPROT_FALSE
+DISABLESPROT_TRUE
 CPP
 OTOOL64
 OTOOL
@@ -761,6 +764,7 @@ enable_fast_install
 with_gnu_ld
 with_sysroot
 enable_libtool_lock
+enable_stack_protector
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1400,6 +1404,8 @@ Optional Features:
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
+  --disable-stack-protector
+                          Disable Stack Protector
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -11636,10 +11642,39 @@ CC="$lt_save_CC"
 
 
 
+
 #AC_CONFIG_HEADERS([config.h])
 ac_config_files="$ac_config_files Makefile"
 
 
+# https://stackoverflow.com/questions/32192031/makefile-am-configure-ac-conditional-environment-variable-check
+# Check whether --enable-stack-protector was given.
+if test "${enable_stack_protector+set}" = set; then :
+  enableval=$enable_stack_protector;
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to disable stack protector" >&5
+$as_echo_n "checking whether to disable stack protector... " >&6; }
+if test "x${enable_stack_protector}" = "xno" ; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+ if test "x${enable_stack_protector}" = "xno"; then
+  DISABLESPROT_TRUE=
+  DISABLESPROT_FALSE='#'
+else
+  DISABLESPROT_TRUE='#'
+  DISABLESPROT_FALSE=
+fi
+
+
+if test "x${enable_stack_protector}" = "xno"; then
+	REP_CFLAGS='-fno-stack-protector'
+
+fi
 
 
 # Checks for programs.
@@ -11883,6 +11918,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${am__fastdepCC_TRUE}" && test -z "${am__fastdepCC_FALSE}"; then
   as_fn_error $? "conditional \"am__fastdepCC\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${DISABLESPROT_TRUE}" && test -z "${DISABLESPROT_FALSE}"; then
+  as_fn_error $? "conditional \"DISABLESPROT\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 

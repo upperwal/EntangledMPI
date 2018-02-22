@@ -97,7 +97,7 @@ void init_ckpt_restore(char *file_name) {
 
 	char file[100];
 	sprintf(file, file_name, node.job_id);
-	printf("File to restore checkpoint from: %s\n", file);
+	printf("Rank: %d | File to restore checkpoint from: %s\n",node.rank, file);
 	
 	ckpt_file = fopen(file, "rb");
 
@@ -145,6 +145,8 @@ void restore_heap_seg() {
 		fread(&temp_container, sizeof(Malloc_container), 1, ckpt_file);
 
 		address *pointer_to_heap = (address *)temp_container.container_address;
+
+		*pointer_to_heap = malloc(temp_container.size);
 
 		fread(*pointer_to_heap, temp_container.size, 1, ckpt_file);
 

@@ -103,7 +103,7 @@ int main(int argc, char** argv){
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	if(rank == 0)
-		printf("Rank: %d | [Users program] Value: %d | address: %p\n", rank, *a, a);
+	printf("Rank: %d | [Users program] Value: %d | address: %p\n", rank, *a, a);
 	/*if(rank == 0)
 		printf("Rank: %d | [Users program] Heap Val: %d\n", rank, *a);*/
 	//printf("Init: %p | Uninit: %p\n", &a, &b);
