@@ -1,4 +1,4 @@
-noinst_PROGRAMS = reptest datasegtranstest stacksegtranstest heapsegtranstest checkpointtest
+noinst_PROGRAMS = reptest datasegtranstest stacksegtranstest heapsegtranstest checkpointtest matmul
 reptest_LDADD = libreplication.la 
 reptest_SOURCES = test/rep_test.c
 reptest_LDFLAGS = -no-install
@@ -23,3 +23,8 @@ checkpointtest_LDADD = libreplication.la
 checkpointtest_SOURCES = test/checkpoint_test.c
 checkpointtest_LDFLAGS = -no-install
 checkpointtest_CFLAGS = -g -O0 -dynamic
+
+matmul_LDADD = libreplication.la
+matmul_SOURCES = test/mat_mul.c
+matmul_LDFLAGS = -no-install
+matmul_CFLAGS = -g -O0 -dynamic

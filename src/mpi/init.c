@@ -96,7 +96,12 @@ void *rep_thread_init(void *_stackHigherAddress) {
 // __attribute__((optimize("O0"))) : Might work to get RBP of main function.
 int MPI_Init(int *argc, char ***argv) {
 	int ckpt_bit;
-	PMPI_Init(NULL, argv);
+	PMPI_Init(argc, argv);
+
+	if(argv == NULL) {
+		printf("You must pass &argv to MPI_Init()\n");
+		exit(0);
+	}
 
 	address stackStart;
 
@@ -137,8 +142,27 @@ int MPI_Init(int *argc, char ***argv) {
 int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
 	printf("In MPI_Send()\n");
 	is_file_update_set();
+
+	// Not fault tolerant
+	if(node.node_checkpoint_master == YES) {
+		for(int i=0; i<job_list[dest].worker_count; i++) {
+			//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);	
+			PMPI_Send(buf, count, datatype, (job_list[dest].rank_list)[i], tag, comm);
+		}
+	}
 }
 
-int MPI_Comm_rank( MPI_Comm comm, int *rank ) {
+int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status) {
+	printf("In MPI_Recv()\n");
+	is_file_update_set();
+
+	PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm, status);
+}
+
+int MPI_Comm_rank(MPI_Comm comm, int *rank) {
 	*rank = node.job_id;
+}
+
+int MPI_Comm_size(MPI_Comm comm, int *size) {
+	*size = node.jobs_count;
 }

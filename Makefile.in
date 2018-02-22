@@ -100,7 +100,7 @@ DIST_COMMON = $(srcdir)/src/Makefile.mk \
 	$(top_srcdir)/build_aux/missing
 noinst_PROGRAMS = reptest$(EXEEXT) datasegtranstest$(EXEEXT) \
 	stacksegtranstest$(EXEEXT) heapsegtranstest$(EXEEXT) \
-	checkpointtest$(EXEEXT)
+	checkpointtest$(EXEEXT) matmul$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -191,6 +191,12 @@ am_hello_OBJECTS = src/manager/main.$(OBJEXT) \
 	src/replication/funprint.$(OBJEXT)
 hello_OBJECTS = $(am_hello_OBJECTS)
 hello_LDADD = $(LDADD)
+am_matmul_OBJECTS = test/matmul-mat_mul.$(OBJEXT)
+matmul_OBJECTS = $(am_matmul_OBJECTS)
+matmul_DEPENDENCIES = libreplication.la
+matmul_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(matmul_CFLAGS) $(CFLAGS) \
+	$(matmul_LDFLAGS) $(LDFLAGS) -o $@
 am_reptest_OBJECTS = test/reptest-rep_test.$(OBJEXT)
 reptest_OBJECTS = $(am_reptest_OBJECTS)
 reptest_DEPENDENCIES = libreplication.la
@@ -241,11 +247,11 @@ am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libreplication_la_SOURCES) $(checkpointtest_SOURCES) \
 	$(datasegtranstest_SOURCES) $(heapsegtranstest_SOURCES) \
-	$(hello_SOURCES) $(reptest_SOURCES) \
+	$(hello_SOURCES) $(matmul_SOURCES) $(reptest_SOURCES) \
 	$(stacksegtranstest_SOURCES)
 DIST_SOURCES = $(libreplication_la_SOURCES) $(checkpointtest_SOURCES) \
 	$(datasegtranstest_SOURCES) $(heapsegtranstest_SOURCES) \
-	$(hello_SOURCES) $(reptest_SOURCES) \
+	$(hello_SOURCES) $(matmul_SOURCES) $(reptest_SOURCES) \
 	$(stacksegtranstest_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -432,6 +438,10 @@ checkpointtest_LDADD = libreplication.la
 checkpointtest_SOURCES = test/checkpoint_test.c
 checkpointtest_LDFLAGS = -no-install
 checkpointtest_CFLAGS = -g -O0 -dynamic
+matmul_LDADD = libreplication.la
+matmul_SOURCES = test/mat_mul.c
+matmul_LDFLAGS = -no-install
+matmul_CFLAGS = -g -O0 -dynamic
 all: all-am
 
 .SUFFIXES:
@@ -650,6 +660,12 @@ src/replication/funprint.$(OBJEXT): src/replication/$(am__dirstamp) \
 hello$(EXEEXT): $(hello_OBJECTS) $(hello_DEPENDENCIES) $(EXTRA_hello_DEPENDENCIES) 
 	@rm -f hello$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(hello_OBJECTS) $(hello_LDADD) $(LIBS)
+test/matmul-mat_mul.$(OBJEXT): test/$(am__dirstamp) \
+	test/$(DEPDIR)/$(am__dirstamp)
+
+matmul$(EXEEXT): $(matmul_OBJECTS) $(matmul_DEPENDENCIES) $(EXTRA_matmul_DEPENDENCIES) 
+	@rm -f matmul$(EXEEXT)
+	$(AM_V_CCLD)$(matmul_LINK) $(matmul_OBJECTS) $(matmul_LDADD) $(LIBS)
 test/reptest-rep_test.$(OBJEXT): test/$(am__dirstamp) \
 	test/$(DEPDIR)/$(am__dirstamp)
 
@@ -692,6 +708,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/checkpointtest-checkpoint_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/datasegtranstest-dataseg_transfer_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/heapsegtranstest-heapseg_transfer_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/matmul-mat_mul.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/reptest-rep_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/stacksegtranstest-stackseg_transfer_test.Po@am__quote@
 
@@ -816,6 +833,20 @@ test/heapsegtranstest-heapseg_transfer_test.obj: test/heapseg_transfer_test.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/heapseg_transfer_test.c' object='test/heapsegtranstest-heapseg_transfer_test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(heapsegtranstest_CFLAGS) $(CFLAGS) -c -o test/heapsegtranstest-heapseg_transfer_test.obj `if test -f 'test/heapseg_transfer_test.c'; then $(CYGPATH_W) 'test/heapseg_transfer_test.c'; else $(CYGPATH_W) '$(srcdir)/test/heapseg_transfer_test.c'; fi`
+
+test/matmul-mat_mul.o: test/mat_mul.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(matmul_CFLAGS) $(CFLAGS) -MT test/matmul-mat_mul.o -MD -MP -MF test/$(DEPDIR)/matmul-mat_mul.Tpo -c -o test/matmul-mat_mul.o `test -f 'test/mat_mul.c' || echo '$(srcdir)/'`test/mat_mul.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/matmul-mat_mul.Tpo test/$(DEPDIR)/matmul-mat_mul.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/mat_mul.c' object='test/matmul-mat_mul.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(matmul_CFLAGS) $(CFLAGS) -c -o test/matmul-mat_mul.o `test -f 'test/mat_mul.c' || echo '$(srcdir)/'`test/mat_mul.c
+
+test/matmul-mat_mul.obj: test/mat_mul.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(matmul_CFLAGS) $(CFLAGS) -MT test/matmul-mat_mul.obj -MD -MP -MF test/$(DEPDIR)/matmul-mat_mul.Tpo -c -o test/matmul-mat_mul.obj `if test -f 'test/mat_mul.c'; then $(CYGPATH_W) 'test/mat_mul.c'; else $(CYGPATH_W) '$(srcdir)/test/mat_mul.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/matmul-mat_mul.Tpo test/$(DEPDIR)/matmul-mat_mul.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test/mat_mul.c' object='test/matmul-mat_mul.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(matmul_CFLAGS) $(CFLAGS) -c -o test/matmul-mat_mul.obj `if test -f 'test/mat_mul.c'; then $(CYGPATH_W) 'test/mat_mul.c'; else $(CYGPATH_W) '$(srcdir)/test/mat_mul.c'; fi`
 
 test/reptest-rep_test.o: test/rep_test.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(reptest_CFLAGS) $(CFLAGS) -MT test/reptest-rep_test.o -MD -MP -MF test/$(DEPDIR)/reptest-rep_test.Tpo -c -o test/reptest-rep_test.o `test -f 'test/rep_test.c' || echo '$(srcdir)/'`test/rep_test.c

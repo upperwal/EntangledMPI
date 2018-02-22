@@ -13,6 +13,10 @@ extern _edata;				// Initialized Data Segment		: End
 extern __bss_start;			// Uninitialized Data Segment	: Start
 extern _end;				// Uninitialized Data Segment	: End
 
+extern int malloc_number_of_allocations;
+
+extern Malloc_list *head;
+
 void init_ckpt(char *file_name) {
 	printf("Init Ckpt\n");
 
@@ -24,6 +28,7 @@ void init_ckpt(char *file_name) {
 
 	save_data_seg();
 	save_stack_seg();
+	save_heap_seg();
 
 	fclose(ckpt_file);
 }
@@ -65,6 +70,28 @@ void save_stack_seg() {
 	fwrite((void *)stackLowerAddress, 1, stack_size, ckpt_file);
 }
 
+void save_heap_seg() {
+	Malloc_list *temp = head;
+
+	// Saving number of memory allocations using malloc.
+	fwrite(&malloc_number_of_allocations, sizeof(int), 1, ckpt_file);
+
+	while(temp != NULL) {
+		// Saving the memory container.
+		fwrite(&(temp->container), sizeof(Malloc_container), 1, ckpt_file);
+		printf("Writing Malloc Container: %p | %d\n", (temp->container).container_address, (temp->container).size);
+
+		// Saving whatever is in heap memory.
+		address *pointer_to_heap = (address *)(temp->container).container_address;
+		address *tmp = *pointer_to_heap;
+		printf("Saving actual value: %d\n", *tmp);
+
+		// Handling the case if *pointer_to_heap == NULL
+		fwrite((void *)(*pointer_to_heap), (temp->container).size, 1, ckpt_file);
+		temp = temp->next;
+	}
+}
+
 void init_ckpt_restore(char *file_name) {
 	printf("Init Ckpt Restore\n");
 
@@ -76,6 +103,7 @@ void init_ckpt_restore(char *file_name) {
 
 	restore_data_seg();
 	restore_stack_seg();
+	restore_heap_seg();
 
 	fclose(ckpt_file);
 }
@@ -105,6 +133,23 @@ void restore_stack_seg() {
 	stackLowerAddress = stackHigherAddress - (stack_size - 4); 
 
 	fread((void *)stackLowerAddress, 1, stack_size, ckpt_file);
+}
+
+void restore_heap_seg() {
+	// Restore heap allocation number
+	fread(&malloc_number_of_allocations, sizeof(int), 1, ckpt_file);
+
+	Malloc_container temp_container;
+
+	for(int i=0; i<malloc_number_of_allocations; i++) {
+		fread(&temp_container, sizeof(Malloc_container), 1, ckpt_file);
+
+		address *pointer_to_heap = (address *)temp_container.container_address;
+
+		fread(*pointer_to_heap, temp_container.size, 1, ckpt_file);
+
+		rep_append(temp_container);
+	}
 }
 
 int does_ckpt_file_exists(char *file_name) {

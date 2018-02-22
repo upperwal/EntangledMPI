@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <signal.h>
 #include "src/replication/rep.h"
 
 #include <pthread.h>
@@ -6,7 +9,7 @@
 int a = 80;
 int b;
 
-
+extern Node node;
 
 void f4(int *a) {
 
@@ -46,6 +49,19 @@ int main(int argc, char** argv){
 	//PMPI_Init(&argc, &argv);
 
 	MPI_Init(&argc, &argv);
+
+	MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+
+	pid_t pid;
+
+	pid = getpid();
+
+	printf("Process ID: %d\n", pid);
+
+	if(node.rank == 1)
+		kill(pid, SIGBUS);
+
+	//while(1);
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	//stackMig(2);
