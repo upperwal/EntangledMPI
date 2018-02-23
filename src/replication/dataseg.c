@@ -28,25 +28,20 @@ extern _end;				// Uninitialized Data Segment	: End
 extern Node node;
 
 int transfer_data_seg(MPI_Comm job_comm) {
-	printf("Data Segment Init\n");
+	log_i("Data Segment Init.");
+
+	debug_log_i("Node Address: %p | __data_start: %p | _edata: %p | __bss_start: %p | _end: %p", &node, &__data_start, &_edata, &__bss_start, &_end);
 	
+	PMPI_Barrier(job_comm);
 	transfer_init_data_seg(job_comm);
 	transfer_uninit_data_seg(job_comm);
 
-	/*int updated_rank;
-	MPI_Comm_rank(MPI_COMM_WORLD, &updated_rank);
-	node.rank = updated_rank;*/
-
-	#ifdef DEBUG
-	printf("Rank %d | Node Address: %p | __data_start: %p | _edata: %p | __bss_start: %p | _end: %p\n", node.rank, &node, &__data_start, &_edata, &__bss_start, &_end);
-	#endif
-
+	log_i("Data Seg Transfer Ended.");
 }
 
 int transfer_init_data_seg(MPI_Comm job_comm) {
-	#ifdef DEBUG
-	printf("Initialised Data Segment Init\n");
-	#endif
+
+	debug_log_i("Initialised Data Segment Init");
 
 	int countBytes = ((char *)&_edata - (char *)&__data_start);
 	// TODO: Check if countBytes + 1 is valid.
@@ -56,7 +51,7 @@ int transfer_init_data_seg(MPI_Comm job_comm) {
 
 	int ranktt;
 	PMPI_Comm_rank(job_comm, &ranktt);
-	printf("Sending init data seg: Rank: %d | Size: %d | Start Address: %d | Job_comm Rank: %d\n", node.rank, countBytes, &__data_start, ranktt);
+	debug_log_i("Sending init data seg: Size: %d | Start Address: %p | Job_comm Rank: %d", countBytes, &__data_start, ranktt);
 
 	/*if(rank == 0) {
 		success = MPI_Send(&__data_start, countBytes, MPI_BYTE, 1, 1, comm);
@@ -73,9 +68,8 @@ int transfer_init_data_seg(MPI_Comm job_comm) {
 }
 
 int transfer_uninit_data_seg(MPI_Comm job_comm) {
-	#ifdef DEBUG
-	printf("UnInitialised Data Segment Init\n");
-	#endif
+
+	debug_log_i("UnInitialised Data Segment Init");
 
 	int countBytes = ((char *)&_end - (char *)&__bss_start);
 	int success;
@@ -85,7 +79,7 @@ int transfer_uninit_data_seg(MPI_Comm job_comm) {
 	int ranktt;
 	PMPI_Comm_rank(job_comm, &ranktt);
 
-	printf("Sending uninit data seg: Rank: %d | Size: %d | Start Address: %d | Job_comm Rank: %d\n", node.rank, countBytes, &__bss_start, ranktt);
+	debug_log_i("Sending uninit data seg: Size: %d | Start Address: %p | Job_comm Rank: %d", countBytes, &__bss_start, ranktt);
 
 
 	/*#ifdef DEBUG

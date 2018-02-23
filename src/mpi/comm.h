@@ -4,6 +4,7 @@
 #include <mpi.h>
 
 #include "src/shared.h"
+#include "src/misc/log.h"
 
 #ifndef __COMM_H__
 #define __COMM_H__

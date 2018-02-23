@@ -8,15 +8,14 @@ int is_file_modified(char *file_name, time_t *last_update, enum CkptBackup *ckpt
 	}
 
 	stat(file_name, &file_attr);
-	printf("Time: %d\n", file_attr.st_mtime);
 
 	if(file_attr.st_mtime > *last_update) {
 		*last_update = file_attr.st_mtime;
-		printf("FILE: Updated.\n");
+		debug_log_i("File Updated.");
 		return 1;
 	}
 	else {
-		printf("FILE: No Update.\n");
+		debug_log_i("File NOT Updated.");
 		return 0;
 	}
 }

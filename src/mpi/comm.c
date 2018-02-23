@@ -5,7 +5,7 @@ extern Node node;
 extern enum CkptBackup ckpt_backup;
 
 int init_node(char *file_name, Job **job_list, Node *node) {
-	printf("Initiating Node and Jobs data from file.\n");
+	debug_log_i("Initiating Node and Jobs data from file.");
 	
 	int my_rank;
 	PMPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
@@ -25,7 +25,7 @@ int init_node(char *file_name, Job **job_list, Node *node) {
 	(*node).node_transit_state = NODE_DATA_NONE;
 
 	for(int i=0; i<(*node).jobs_count; i++) {
-		printf("[Node Init] Original Rank: %d | Rank: %d | Node Job ID: %d | Node Transit: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d\n", my_rank, (*node).rank, (*node).job_id, (*node).node_transit_state, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1]);
+		debug_log_i("[Node Init] My Job ID: %d | Node Transit: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d", (*node).job_id, (*node).node_transit_state, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1]);
 	}
 }
 
@@ -38,7 +38,7 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 	FILE *pointer = fopen(file_name, "r");
 
 	if(pointer == NULL) {
-		printf("Cannot open file.\n");
+		log_e("Cannot open replication map file.");
         exit(0);
 	}
 
@@ -113,7 +113,7 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 	}
 
 	for(int i=0; i<jobs; i++) {
-		printf("[Rep File Update] Original Rank: %d | MyJobId: %d | Rank: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d | Checkpoint: %d\n", my_rank, (*node).job_id, (*node).rank, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1], (*node).node_checkpoint_master);
+		debug_log_i("[Rep File Update] MyJobId: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d | Checkpoint: %d", (*node).job_id, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1], (*node).node_checkpoint_master);
 	}
 }
 
@@ -139,21 +139,21 @@ int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ck
 			key = 1;
 		}
 		flag = 1;
-		printf("Original Rank: %d | comm created. | Job: %d\n", node.rank, node.job_id);
+		debug_log_i("Comm Created. | Job: %d", node.job_id);
 	}
 	else {
 		color = MPI_UNDEFINED;
 		flag = 0;
-		printf("Original Rank: %d | No comm created. | Job: %d\n", node.rank, node.job_id);
+		debug_log_i("No Comm Created. | Job: %d", node.job_id);
 	}
 
 	*rep_flag = flag;
 
-	printf("Before Split | Rank: %d\n", node.rank);
-	printf("Rank: %d | Color: %d | key: %d | job_comm: %p\n", node.rank, color, key, job_comm);
+	debug_log_i("Color: %d | key: %d | job_comm: %p", color, key, job_comm);
 
 	PMPI_Comm_split(MPI_COMM_WORLD, color, key, job_comm);
 
-	printf("Create Migration Comm: Rank: %d | FLAG_OR: %d | flag: %d | ckpt: %d\n", node.rank, (flag || node.node_checkpoint_master), flag, node.node_checkpoint_master);
+	debug_log_i("Create Migration Comm: flag: %d | ckpt master: %d", flag, node.node_checkpoint_master);
+	
 	return (flag || node.node_checkpoint_master);
 }

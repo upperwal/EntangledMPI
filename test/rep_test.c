@@ -7,7 +7,6 @@
 #include <pthread.h>
 
 int initSeg = 80;
-int b;
 
 extern Node node;
 
@@ -41,12 +40,10 @@ void f1(int *a) {
 }
 
 int main(int argc, char** argv){
-	int rank, size, len, oo = 9;
+	int rank, size = 9, len, oo = 9;
 	char procName[100];
 	int *a, *b;
 	char *c;
-
-	//PMPI_Init(&argc, &argv);
 
 	MPI_Init(&argc, &argv);
 
@@ -60,11 +57,14 @@ int main(int argc, char** argv){
 
 	/*if(node.rank == 1)
 		kill(pid, SIGBUS);*/
-	/*int h = 9;
-	while(h);*/
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	//stackMig(2);
+
+	printf("[USER CODE] Rank Address: %p\n", &rank);
+
+	/*if(rank == 1)
+		readProcMapFile();*/
+
 	if(rank == 0) {
 		rep_malloc(&a, sizeof(int));
 		*a = 43;
@@ -73,64 +73,71 @@ int main(int argc, char** argv){
 		
 	}
 	else {
+		rep_malloc(&b, sizeof(int));
+		*b = 34;
 		oo = 77;
 		initSeg = 200000;
 
 		sleep(10);
 		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+		printf("[User Code] BEFORE 1 | Rank: %d\n", rank);
 
 		sleep(10);
 		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+		printf("[User Code] BEFORE 2 | Rank: %d\n", rank);
 
 		sleep(10);
 		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+		printf("[User Code] BEFORE 3 | Rank: %d\n", rank);
 
 		sleep(10);
 		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+		printf("[User Code] BEFORE 4 | Rank: %d\n", rank);
 	}
 
 	printf("[User Code] Rank: %d\n", rank);
 
 	
-
-	
-	//readProcMapFile();
-	//printf("In Main | main thread\n");
-
-	MPI_Barrier(MPI_COMM_WORLD);
-
-	
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	if(rank == 0)
-	printf("Rank: %d | [Users program] Value: %d | address: %p\n", rank, *a, a);
-	/*if(rank == 0)
-		printf("Rank: %d | [Users program] Heap Val: %d\n", rank, *a);*/
-	//printf("Init: %p | Uninit: %p\n", &a, &b);
+		printf("[Heap Seg] Rank: %d | [Users program] Value: %d | address: %p\n", rank, *a, a);
 
+	printf("[Data Seg] Rank: %d | [Users program] Value: %d | address: %p\n", rank, initSeg, &initSeg);
+	printf("[Stack Seg] Rank: %d | [Users program] Value: %d | address: %p\n", rank, oo, &oo);
+	
+	if(rank == 0) {
+		if(*a == 43)
+			printf("[Heap Seg] Rank: %d | SUCCESS\n", rank);
+		else
+			printf("[Heap Seg] Rank: %d | FAIL\n", rank);
+
+		if(initSeg == 1945) 
+			printf("[Data Seg] Rank: %d | SUCCESS\n", rank);
+		else
+			printf("[Data Seg] Rank: %d | FAIL\n", rank);
+		
+		if(oo == 96)
+			printf("[Stack Seg] Rank: %d | SUCCESS\n", rank);
+		else
+			printf("[Stack Seg] Rank: %d | FAIL\n", rank);
+	}
+	else if(rank == 1) {
+		if(*b == 34)
+			printf("[Heap Seg] Rank: %d | SUCCESS\n", rank);
+		else
+			printf("[Heap Seg] Rank: %d | FAIL\n", rank);
+
+		if(initSeg == 200000) 
+			printf("[Data Seg] Rank: %d | SUCCESS\n", rank);
+		else
+			printf("[Data Seg] Rank: %d | FAIL\n", rank);
+		
+		if(oo == 77)
+			printf("[Stack Seg] Rank: %d | SUCCESS\n", rank);
+		else
+			printf("[Stack Seg] Rank: %d | FAIL\n", rank);
+	}
 
 	MPI_Finalize();
-
-	/*
-	MPI_Comm comm = MPI_COMM_WORLD;
-
-	MPI_Init(&argc, &argv);
-
-	MPI_Replicate();
-
-	MPI_Comm_size(comm, &size);
-	MPI_Comm_rank(comm, &rank);
-
-	printf("Hello after size and rank functions\n");
-
-	MPI_Barrier(comm);
-
-	//int *temp = (int *) malloc(sizeof(int)*20);
-
-	MPI_Get_processor_name(procName,&len);
-
-	printf("Hello from Process %d of %d on %s\n", rank, size, procName);
-
-
-	MPI_Finalize();*/
 }

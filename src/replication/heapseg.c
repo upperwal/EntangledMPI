@@ -54,7 +54,7 @@ void rep_remove(void *node_add) {
 void rep_display() {
 	Malloc_list *temp = head;
 	while(temp != NULL) {
-		//printf("[Display] Container Address: %p | Size: %d\n", (temp->container).container_address, (temp->container).size);
+		log_i("[Display] Container Address: %p | Size: %d", (temp->container).container_address, (temp->container).size);
 		temp = temp->next;
 	}
 }
@@ -105,8 +105,8 @@ void assign_malloc_context(const void **source, const void **dest) {
 	*dest = *source;
 }
 
-void rep_malloc(void *cond_add, size_t size) {
-	address **container = (address **)cond_add;
+void rep_malloc(void **container, size_t size) {
+	//address **container = (address **)cond_add;
 	*container = malloc(size);
 
 	Malloc_container cont;
@@ -114,11 +114,14 @@ void rep_malloc(void *cond_add, size_t size) {
 	cont.linked_address = 0;
 	cont.size = size;
 
+	
+
 	total_malloc_allocation_size += size;
 	malloc_number_of_allocations++;
 
 	rep_append(cont);
-
+	debug_log_i("[Malloc] Head :- Add: %p | Value: %p", &head, head);
+	debug_log_i("[Malloc] Container :- Add: %p | LAdd: %p | Size: %d", (head->container).container_address, (head->container).linked_address, (head->container).size);
 	//address *l = cont.container_address;
 
 	//printf("Container Address: %p | Size: %d | malloc Address: %p\n", (head->container).container_address, (head->container).size, *l);
@@ -140,7 +143,7 @@ void rep_free(void **cont_add) {
 }
 
 int transfer_heap_seg(MPI_Comm job_comm) {
-	printf("Heap Segment Init\n");
+	log_i("Heap Segment Init");
 	
 	//Memory_state prev_mem_state = mem_state;
 	address heap_start;
@@ -152,7 +155,7 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 	//printf("Rank: %d | Yes.\n", rank);
 
 	PMPI_Bcast((void *)&total_malloc_allocation_size, 1, MPI_INT, 0, job_comm);
-	//printf("Rank: %d | Yes2. | total_malloc_allocation_size: %d\n", rank, total_malloc_allocation_size);
+	debug_log_i("total_malloc_allocation_size: %d", total_malloc_allocation_size);
 	
 
 	// TODO: Replace rank with NODE_DATA_RECEIVER
@@ -160,6 +163,7 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 		// free already allocated memory.
 		// This wont be used much. As data will become non-contiguous as new malloc is done
 		// on replica node.
+		debug_log_i("Clearing Old Heap for replica.");
 		if(mem_state == CONTIGUOUS) {
 			rep_clear();
 		}
@@ -170,18 +174,24 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 		heap_start = (address)malloc(total_malloc_allocation_size);
 	}
 
+	debug_log_i("Is Head NULL: %d", head == NULL);
+
+	rep_display();
+
 
 	PMPI_Bcast((void *)&malloc_number_of_allocations, 1, MPI_INT, 0, job_comm);
-	//printf("Rank: %d | Yes3. | malloc_number_of_allocations: %d\n", rank, malloc_number_of_allocations);
+	debug_log_i("malloc_number_of_allocations: %d", malloc_number_of_allocations);
 	//PMPI_Bcast((void *)&mem_state, 1, MPI_INT, 0, job_comm);
+
 
 	
 	//printf("Rank: %d | SPECIAL. | malloc_number_of_allocations: %d\n", rank, malloc_number_of_allocations);
-	
+	if(head != NULL)
+		debug_log_i("Container value Head: %p", (head->container).container_address);
 
 	//printf("[After heap alloc] Rank: %d | malloc_number_of_allocations: %d\n", rank, malloc_number_of_allocations);
 	for(int i = 0; i < malloc_number_of_allocations; i++) {
-		//printf("FOR: 0 Rank: %d\n", rank);
+		debug_log_i("Malloc Number: %d", i);
 		if(rank == 0) {
 			container.container_address = (temp->container).container_address;
 			container.linked_address = (temp->container).linked_address;
@@ -190,10 +200,14 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 			temp = temp->next;
 		}
 
+		debug_log_i("Container Info: Add: %p | LAdd: %p | Size: %d", container.container_address, container.linked_address,container.size);
+
 		//printf("FOR: 1 Rank: %d\n", rank);
 
 		PMPI_Bcast((void *)&container, sizeof(Malloc_container), MPI_BYTE, 0, job_comm);
 		//printf("FOR: 2 Rank: %d\n", rank);
+
+		debug_log_i("After Container BCast");
 
 		if(container.size == 0 && container.linked_address != 0) {
 			//printf("POINTER PROBLEM: | linked_address: %p | container_address: %p\n", container.linked_address, container.container_address);
@@ -224,4 +238,6 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 			rep_append(container);
 		}
 	}
+
+	log_i("Heap Seg Transfer Ended.");
 }

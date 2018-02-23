@@ -1,4 +1,4 @@
-AM_CFLAGS = $(REP_CFLAGS) -O0 -dynamic
+AM_CFLAGS = $(REP_CFLAGS) -O0 -g -dynamic
 
 bin_PROGRAMS =
 lib_LTLIBRARIES =

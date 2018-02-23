@@ -7,6 +7,7 @@
 #include "src/replication/dataseg.h"
 #include "src/replication/stackseg.h"
 #include "src/replication/heapseg.h"
+#include "src/misc/log.h"
 
 #ifndef __REP_H__
 #define __REP_H__

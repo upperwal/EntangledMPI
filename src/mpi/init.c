@@ -26,19 +26,20 @@ char *ckpt_file = "./ckpt/rank-%d.ckpt";
 // Restore from checkpoint files: YES | Do not restore: NO
 enum CkptBackup ckpt_backup;
 
+// this comm contains sender and receiver nodes during replication.
+MPI_Comm job_comm;
+
+extern Malloc_list *head;
+
 void *rep_thread_init(void *_stackHigherAddress) {
 	 	// Higher end address (stack grows higher to lower address)
 	stackHigherAddress = (address *)_stackHigherAddress;
 	
 	time_t last_update;
 	int rep_flag;
-
-	// this comm contains sender and receiver nodes during replication.
-	MPI_Comm job_comm;
 	
 	// First run does not create replicas, only correct ranks are initialised.
 	set_last_update(map_file, &last_update);
-	
 	
 	//printf("Stack Start Address: %p | Value: %p\n", &stackHigherAddress, stackHigherAddress);
 
@@ -47,7 +48,7 @@ void *rep_thread_init(void *_stackHigherAddress) {
 		// Start checking for any map file updates.
 		if(is_file_modified(map_file, &last_update, &ckpt_backup)) {
 			
-			printf("Inside Modified file\n");
+			debug_log_i("Inside Modified file");
 
 			parse_map_file(map_file, &job_list, &node, &ckpt_backup);
 			
@@ -56,14 +57,14 @@ void *rep_thread_init(void *_stackHigherAddress) {
 				pthread_mutex_lock(&rep_time_mutex);
 				
 				map_status = MAP_UPDATED;
-				printf("Modified Signal ON\n");
+				debug_log_i("Modified Signal ON");
 				
 				pthread_mutex_lock(&global_mutex);
-				printf("Main thread blocked\n");
+				log_i("Main thread blocked");
 
 				if(ckpt_backup == BACKUP_YES) {
 					// Checkpoint Backup
-					printf("Checkpoint restore started...\n");
+					log_i("Checkpoint restore started...");
 
 					// ckpt restore code
 					init_ckpt_restore(ckpt_file);
@@ -89,17 +90,16 @@ void *rep_thread_init(void *_stackHigherAddress) {
 			
 		}
 		sleep(REP_THREAD_SLEEP_TIME);
-		printf("Checking...\n");
+		debug_log_i("File Check Sleep");
 	}
 }
 
-// __attribute__((optimize("O0"))) : Might work to get RBP of main function.
 int MPI_Init(int *argc, char ***argv) {
 	int ckpt_bit;
 	PMPI_Init(argc, argv);
 
 	if(argv == NULL) {
-		printf("You must pass &argv to MPI_Init()\n");
+		debug_log_e("You must pass &argv to MPI_Init()");
 		exit(0);
 	}
 
@@ -115,9 +115,9 @@ int MPI_Init(int *argc, char ***argv) {
 		stackStart = **argv;
 	}*/
 
-	stackStart = **argv;
+	stackStart = *argv;
 
-	printf("Address Stack new: %p\n", stackStart);
+	debug_log_i("Address Stack new: %p", stackStart);
 	// Lock global mutex. This mutex will always be locked when user program is executing.
 	pthread_mutex_init(&global_mutex, NULL);
 	pthread_mutex_init(&rep_time_mutex, NULL);
@@ -142,23 +142,23 @@ int MPI_Init(int *argc, char ***argv) {
 }
 
 int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
-	printf("In MPI_Send()\n");
+	debug_log_i("In MPI_Send()");
 	is_file_update_set();
-
+	debug_log_i("In MPI_Send() after is_file_update_set");
 	// Not fault tolerant
-	/*if(node.node_checkpoint_master == YES) {
+	if(node.node_checkpoint_master == YES) {
 		for(int i=0; i<job_list[dest].worker_count; i++) {
 			//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);	
 			PMPI_Send(buf, count, datatype, (job_list[dest].rank_list)[i], tag, comm);
 		}
-	}*/
+	}
 }
 
 int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status) {
-	printf("In MPI_Recv()\n");
+	debug_log_i("In MPI_Recv()");
 	is_file_update_set();
 
-	//PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm, status);
+	PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm, status);
 }
 
 int MPI_Comm_rank(MPI_Comm comm, int *rank) {

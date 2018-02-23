@@ -2,6 +2,7 @@
 #include <mpi.h>
 
 #include "src/mpi/comm.h"
+#include "src/misc/log.h"
 
 #ifndef __DATA_SEG_H__
 #define __DATA_SEG_H__

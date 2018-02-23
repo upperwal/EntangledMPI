@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 #include "src/shared.h"
+#include "src/misc/log.h"
 
 #ifndef __FILE_H__
 #define __FILE_H__

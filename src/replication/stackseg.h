@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <mpi.h>
 
+#include "src/misc/log.h"
+
 #ifndef __STACK_SEG_H__
 #define __STACK_SEG_H__
 

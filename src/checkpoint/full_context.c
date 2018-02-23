@@ -18,11 +18,11 @@ extern int malloc_number_of_allocations;
 extern Malloc_list *head;
 
 void init_ckpt(char *file_name) {
-	printf("Init Ckpt\n");
+	debug_log_i("Init Ckpt");
 
 	char file[100];
 	sprintf(file, file_name, node.job_id);
-	printf("File to save checkpoint: %s\n", file);
+	log_i("File to save checkpoint: %s", file);
 	
 	ckpt_file = fopen(file, "wb");
 
@@ -37,7 +37,7 @@ void save_data_seg() {
 	size_t count_bytes_uninit = ((char *)&_edata - (char *)&__data_start);
 	size_t count_bytes_init = ((char *)&_end - (char *)&__bss_start);
 
-	printf("Saving data segment: Uninit Size: %d bytes | Init Size: %d bytes\n", count_bytes_uninit, count_bytes_init);
+	debug_log_i("Saving data segment: Uninit Size: %d bytes | Init Size: %d bytes", count_bytes_uninit, count_bytes_init);
 
 	fwrite(&count_bytes_uninit, sizeof(size_t), 1, ckpt_file);
 	fwrite(&__data_start, 1, count_bytes_uninit, ckpt_file);
@@ -51,9 +51,9 @@ void save_stack_seg() {
 	Context processContext;
 
 	stackLowerAddress = getRSP(context);
-	printf("[UPADTE] RANK: %d | STACK LOWER: %p | RAW: %p\n", node.rank, stackLowerAddress, getRSP(context));
+	//debug_log_i("[UPADTE] RANK: %d | STACK LOWER: %p | RAW: %p", node.rank, stackLowerAddress, getRSP(context));
 
-	printf("[Stack Checkpoint] Lower Address: %p | Higher Address: %p\n", stackLowerAddress, stackHigherAddress);
+	//debug_log_i("[Stack Checkpoint] Lower Address: %p | Higher Address: %p", stackLowerAddress, stackHigherAddress);
 
 	stack_size = (size_t)get_stack_size();
 
@@ -61,9 +61,9 @@ void save_stack_seg() {
 	processContext.rsp = getRSP(context);
 	processContext.rbp = getRBP(context);
 
-	printf("[CHECKPOINT] PC: %p | RSP: %p | RBP: %p\n", processContext.rip, processContext.rsp, processContext.rbp);
+	//debug_log_i("[CHECKPOINT] PC: %p | RSP: %p | RBP: %p", processContext.rip, processContext.rsp, processContext.rbp);
 
-	printf("Stack Checkpoint save Size: %d\n", stack_size);
+	debug_log_i("Stack Checkpoint save Size: %d", stack_size);
 
 	fwrite(&processContext, sizeof(Context), 1, ckpt_file);
 	fwrite(&stack_size, sizeof(size_t), 1, ckpt_file);
@@ -79,12 +79,12 @@ void save_heap_seg() {
 	while(temp != NULL) {
 		// Saving the memory container.
 		fwrite(&(temp->container), sizeof(Malloc_container), 1, ckpt_file);
-		printf("Writing Malloc Container: %p | %d\n", (temp->container).container_address, (temp->container).size);
+		debug_log_i("Writing Malloc Container: Address: %p | Size: %d", (temp->container).container_address, (temp->container).size);
 
 		// Saving whatever is in heap memory.
 		address *pointer_to_heap = (address *)(temp->container).container_address;
 		address *tmp = *pointer_to_heap;
-		printf("Saving actual value: %d\n", *tmp);
+		debug_log_i("Saving stack bytes: %d", *tmp);
 
 		// Handling the case if *pointer_to_heap == NULL
 		fwrite((void *)(*pointer_to_heap), (temp->container).size, 1, ckpt_file);
@@ -93,11 +93,11 @@ void save_heap_seg() {
 }
 
 void init_ckpt_restore(char *file_name) {
-	printf("Init Ckpt Restore\n");
+	log_i("Init Ckpt Restore");
 
 	char file[100];
 	sprintf(file, file_name, node.job_id);
-	printf("Rank: %d | File to restore checkpoint from: %s\n",node.rank, file);
+	log_i("File to restore checkpoint from: %s", file);
 	
 	ckpt_file = fopen(file, "rb");
 
@@ -159,11 +159,11 @@ int does_ckpt_file_exists(char *file_name) {
 	sprintf(file, file_name, node.job_id);
 
 	if(access(file, F_OK) != -1) {
-		printf("Ckpt file exist: YES | rank: %d\n", node.rank);
+		log_i("Ckpt file exist: YES");
 		return 1;
 	}
 	else {
-		printf("Ckpt file does not exist: NO | rank: %d\n", node.rank);
+		log_i("Ckpt file does not exist: NO");
 		return 0;
 	}
 }

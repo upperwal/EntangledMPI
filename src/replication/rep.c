@@ -14,6 +14,8 @@ extern address stackLowerAddress;
 
 extern Node node;
 
+extern Malloc_list *head;
+
 /* 
 *  1. Checks for file update pointer from the replication thread.
 *  2. If set, do a setjmp(), MPI_wait_all() and switch to alternate stack.
@@ -22,9 +24,11 @@ extern Node node;
 int is_file_update_set() {
 	// This function will execute on main user program thread.
 	//printf("Thread: Main | Function: is_file_update_set | newStack Address: %p\n", &newStack);
+
 	if(map_status == MAP_UPDATED) {
 		
-		printf("Map Update: %d\n", map_status);
+		debug_log_i("Map Update: %d", map_status);
+
 		int s = setjmp(context);
 		if(s == 0) {
 
@@ -33,17 +37,20 @@ int is_file_update_set() {
 			copy_jmp_buf(context, copy_context);
 
 			// Create some space for new temp stack.
-			newStack = malloc(sizeof(char) * 10000);
+			newStack = malloc(sizeof(char) * 2000);
+
+			debug_log_i("New stack lower address: %p | higher: %p", newStack, newStack + 1800);
 			
 			// Stack starts from higher address.
-			setRSP(copy_context, newStack + 9999);
+			setRSP(copy_context, newStack + 1800);
 
 			// Start execution on new temp stack.
 			longjmp(copy_context, 1);
 		}
 		else if(s == 1) {
+			// DO NOT PLACE *log_* macros INSIDE THIS.
 			// New stack will start right here.
-			printf("Back to the past.\n");
+			//debug_log_i("Back to the past.");
 
 			// Unlock global mutex, so that rep thread can lock it.
 			pthread_mutex_unlock(&global_mutex);
@@ -51,7 +58,7 @@ int is_file_update_set() {
 			// lock to this mutex will result in suspension of this thread.
 			pthread_mutex_lock(&rep_time_mutex);
 
-			printf("Main thread block open.\n");
+			//log_i("Main thread block open.");
 
 			// Need to release it.
 			pthread_mutex_unlock(&rep_time_mutex);
@@ -63,10 +70,12 @@ int is_file_update_set() {
 		}
 		else {
 			// Original stack will start here.
-			printf("Works Awesome!!!!\n");
+			debug_log_i("Works Awesome!!!!");
 
 			// Free space allocated for temp stack.
 			free(newStack);
+
+			debug_log_i("After longjmp | newStack address: %p", &newStack);
 
 
 		}
@@ -79,15 +88,10 @@ int is_file_update_set() {
 }
 
 int init_rep(MPI_Comm job_comm) {
-	printf("Rank: %d | Replication Init.\n", node.rank);
-
-	/*int rank, size;
-	MPI_Comm_rank(job_comm, &rank);
-	MPI_Comm_size(job_comm, &size);
-
-	printf("Original Rank: %d | Job Id: %d | Job Rank: %d | Job comm size: %d\n", node.rank, node.job_id, rank, size);*/
+	log_i("Replication Init.");
 
 	// Init Data Segment
+	debug_log_i("Before Dataseg");
 	transfer_data_seg(job_comm);
 
 	// Init Stack Segment
@@ -96,7 +100,7 @@ int init_rep(MPI_Comm job_comm) {
 	// Init Heap Segment
 	transfer_heap_seg(job_comm);
 
-	printf("Rank: %d | Replication Complete.\n", node.rank);
+	log_i("Replication Complete.");
 }
 
 void copy_jmp_buf(jmp_buf source, jmp_buf dest) {
@@ -121,7 +125,6 @@ address getRBP(jmp_buf context) {
 address getRSP(jmp_buf context) {
 	address rsp = context[0].__jmpbuf[JB_RSP];
 	PTR_DECRYPT(rsp);
-	printf("In getRSP: %p\n", rsp);
 	return rsp;
 }
 
@@ -195,7 +198,7 @@ int readProcMapFile() {
 	    		}
 	    	}
 
-	    	printf("String 1: %s | String 2: %s\n", line, secondAddr);
+	    	debug_log_i("String 1: %s | String 2: %s", line, secondAddr);
 	    	dataSegStart = charArray2Long(line);
 	    	dataSegEnd = charArray2Long(secondAddr);
 	    }

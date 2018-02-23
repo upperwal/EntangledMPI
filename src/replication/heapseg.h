@@ -3,6 +3,7 @@
 #include <mpi.h>
 
 #include "src/shared.h"
+#include "src/misc/log.h"
 
 #ifndef __HEAP_SEG_H__
 #define __HEAP_SEG_H__
@@ -43,7 +44,7 @@ void rep_clear_discontiguous();
 
 void assign_malloc_context(const void **, const void **);
 
-void rep_malloc(void *, size_t);
+void rep_malloc(void **, size_t);
 void rep_free(void **);
 
 int transfer_heap_seg(MPI_Comm);

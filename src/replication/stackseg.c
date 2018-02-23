@@ -41,6 +41,7 @@ extern Node node;
 extern jmp_buf context;
 
 int transfer_stack_seg(MPI_Comm job_comm) {
+	log_i("Stack Seg Transfer Init.");
 	
 
 	int stack_size;
@@ -48,7 +49,7 @@ int transfer_stack_seg(MPI_Comm job_comm) {
 	if(node.node_transit_state == NODE_DATA_SENDER) {
 		stackLowerAddress = getRSP(context);
 
-		printf("[Stack] Lower Address: %p | Higher Address: %p\n", stackLowerAddress, stackHigherAddress);
+		debug_log_i("[SENDER] [Stack] Lower Address: %p | Higher Address: %p", stackLowerAddress, stackHigherAddress);
 
 		stack_size = get_stack_size();
 
@@ -56,7 +57,7 @@ int transfer_stack_seg(MPI_Comm job_comm) {
 		processContext.rsp = getRSP(context);
 		processContext.rbp = getRBP(context);
 
-		printf("PC: %p | RSP: %p | RBP: %p\n", processContext.rip, processContext.rsp, processContext.rbp);
+		debug_log_i("[SENDER] PC: %p | RSP: %p | RBP: %p", processContext.rip, processContext.rsp, processContext.rbp);
 	}
 
 	PMPI_Bcast(&processContext, sizeof(Context), MPI_BYTE, 0, job_comm);
@@ -73,16 +74,27 @@ int transfer_stack_seg(MPI_Comm job_comm) {
 		stackLowerAddress = stackHigherAddress - (stack_size - 4); 
 	}
 
-	printf("Rank: %d | StackLowerAddress: %p | StackHigerAddress: %p\n", node.rank, stackLowerAddress, stackHigherAddress);
+	address stackLAddComp = stackLowerAddress;
+
+	PMPI_Bcast(&stackLAddComp, sizeof(address), MPI_BYTE, 0, job_comm);
+
+	if(stackLAddComp != stackLowerAddress) {
+		log_e("Compute and Replica Process Don not have same memory map. Stack High address differs");
+		MPI_Abort(MPI_COMM_WORLD, 1);
+	}
+
+	debug_log_i("StackLowerAddress: %p | StackHigerAddress: %p", stackLowerAddress, stackHigherAddress);
 
 	PMPI_Bcast((void *)stackLowerAddress, stack_size, MPI_BYTE, 0, job_comm);
+
+	log_i("Stack Seg Transfer Ended.");
 }
 
 int get_stack_size() {
 	// adding 5: 1 for boundry element, 3 for: Remember to add 4 bytes to &argc to get Lower Bound (LB)
 	int stack_size = ((char *)stackHigherAddress - (char *)stackLowerAddress) + 4;	
 
-	printf("Stack Size: %d\n", stack_size);
+	debug_log_i("Stack Size: %d", stack_size);
 
 	return stack_size;
 }
