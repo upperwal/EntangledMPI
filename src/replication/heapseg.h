@@ -11,6 +11,7 @@
 typedef struct {
 	address container_address;
 	address linked_address;
+	address allocated_address;	// irrelevant on replica node.
 	size_t size;
 } Malloc_container;
 

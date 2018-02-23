@@ -91,14 +91,17 @@ int init_rep(MPI_Comm job_comm) {
 	log_i("Replication Init.");
 
 	// Init Data Segment
-	debug_log_i("Before Dataseg");
+	PMPI_Barrier(job_comm);
 	transfer_data_seg(job_comm);
 
 	// Init Stack Segment
+	PMPI_Barrier(job_comm);
 	transfer_stack_seg(job_comm);
 
 	// Init Heap Segment
+	PMPI_Barrier(job_comm);
 	transfer_heap_seg(job_comm);
+	
 
 	log_i("Replication Complete.");
 }

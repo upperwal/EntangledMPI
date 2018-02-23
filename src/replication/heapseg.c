@@ -18,6 +18,7 @@ void rep_append(Malloc_container container) {
 	
 	(element->container).container_address = container.container_address;
 	(element->container).linked_address = container.linked_address;
+	(element->container).allocated_address = container.allocated_address;
 	(element->container).size = container.size;
 
 	if(head == NULL) {
@@ -59,10 +60,13 @@ void rep_display() {
 	}
 }
 
+// NOT yet used. Not Tested.
 void rep_clear() {
+	
 	address *ptr;
-	ptr = (head->container).container_address;
-	free(*ptr);
+	ptr = (head->container).allocated_address;
+	
+	free(ptr);
 	Malloc_list *temp = head;
 	while(temp != NULL) {
 		head = temp;
@@ -72,24 +76,30 @@ void rep_clear() {
 	head = NULL;
 	tail = NULL;
 	malloc_number_of_allocations = 0;
+	
 }
 
 void rep_clear_discontiguous() {
+	debug_log_i("Clearing Malloc List | no mallocs: %d", malloc_number_of_allocations);
 	Malloc_list *temp = head;
 	address *ptr;
+	
+
 	while(temp != NULL) {
 
 		head = temp;
 		temp = temp->next;
 
-		ptr = (head->container).container_address;
-		free(*ptr);
-
+		ptr = (head->container).allocated_address;
+		debug_log_i("First Ptr");
+		free(ptr);
+		debug_log_i("Second Ptr");
 		free(head);
 	}
 	head = NULL;
 	tail = NULL;
 	malloc_number_of_allocations = 0;
+	debug_log_i("Clearing Malloc List End");
 }
 
 void assign_malloc_context(const void **source, const void **dest) {
@@ -97,6 +107,8 @@ void assign_malloc_context(const void **source, const void **dest) {
 	cont.container_address = (address)dest;
 	cont.linked_address = (address)source;
 	cont.size = 0;
+
+	cont.allocated_address = *source;
 
 	malloc_number_of_allocations++;
 
@@ -112,6 +124,7 @@ void rep_malloc(void **container, size_t size) {
 	Malloc_container cont;
 	cont.container_address = (address)container;
 	cont.linked_address = 0;
+	cont.allocated_address = (address)*container;
 	cont.size = size;
 
 	
@@ -133,7 +146,7 @@ void rep_free(void **cont_add) {
 	// Empty linkedlist
 	while(temp != NULL) {
 		if((temp->container).container_address == cont_add) {
-			free(*cont_add);
+			free((temp->container).allocated_address);
 			rep_remove(temp);
 			break;
 		}
@@ -200,11 +213,12 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 			temp = temp->next;
 		}
 
-		debug_log_i("Container Info: Add: %p | LAdd: %p | Size: %d", container.container_address, container.linked_address,container.size);
+		
 
 		//printf("FOR: 1 Rank: %d\n", rank);
 
 		PMPI_Bcast((void *)&container, sizeof(Malloc_container), MPI_BYTE, 0, job_comm);
+		debug_log_i("Container Info: Add: %p | LAdd: %p | Size: %d", container.container_address, container.linked_address,container.size);
 		//printf("FOR: 2 Rank: %d\n", rank);
 
 		debug_log_i("After Container BCast");
@@ -228,10 +242,14 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 		
 		PMPI_Bcast((void *)heap_start, container.size, MPI_BYTE, 0, job_comm);
 
+		address *ii = (address *)heap_start;
+		debug_log_i("Heap Sent Data: %d | Container Address: %p", *ii, container.container_address);
+
 		if(rank != 0) {
 			address *ptr = container.container_address;
 
 			*ptr = heap_start;
+			debug_log_i("Added new Heap Mem: %p", heap_start);
 
 			heap_start += container.size;
 

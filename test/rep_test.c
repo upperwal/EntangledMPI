@@ -12,19 +12,17 @@ extern Node node;
 
 void f4(int *a) {
 
-	*a = 96;
+	sleep(10);
+	MPI_Send(a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 
 	sleep(10);
-	MPI_Send(&a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+	MPI_Send(a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 
 	sleep(10);
-	MPI_Send(&a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+	MPI_Send(a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 
 	sleep(10);
-	MPI_Send(&a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
-
-	sleep(10);
-	MPI_Send(&a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+	MPI_Send(a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 }
 
 void f3(int *a) {
@@ -40,7 +38,7 @@ void f1(int *a) {
 }
 
 int main(int argc, char** argv){
-	int rank, size = 9, len, oo = 9;
+	int rank, size = 9, len, oo = 9, sendRecvData;
 	char procName[100];
 	int *a, *b;
 	char *c;
@@ -68,8 +66,11 @@ int main(int argc, char** argv){
 	if(rank == 0) {
 		rep_malloc(&a, sizeof(int));
 		*a = 43;
+		oo = 96;
 		initSeg = 1945;
-		f1(&oo);
+		sendRecvData = 2019;
+		printf("[User Code] Container Address: %p | Rank: %d\n", &a, rank);
+		f1(&sendRecvData);
 		
 	}
 	else {
@@ -77,21 +78,22 @@ int main(int argc, char** argv){
 		*b = 34;
 		oo = 77;
 		initSeg = 200000;
+		printf("[User Code] Container Address: %p | Rank: %d\n", &a, rank);
 
 		sleep(10);
-		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+		MPI_Recv(&sendRecvData, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		printf("[User Code] BEFORE 1 | Rank: %d\n", rank);
 
 		sleep(10);
-		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+		MPI_Recv(&sendRecvData, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		printf("[User Code] BEFORE 2 | Rank: %d\n", rank);
 
 		sleep(10);
-		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+		MPI_Recv(&sendRecvData, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		printf("[User Code] BEFORE 3 | Rank: %d\n", rank);
 
 		sleep(10);
-		MPI_Send(&rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+		MPI_Recv(&sendRecvData, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		printf("[User Code] BEFORE 4 | Rank: %d\n", rank);
 	}
 
@@ -103,8 +105,12 @@ int main(int argc, char** argv){
 	if(rank == 0)
 		printf("[Heap Seg] Rank: %d | [Users program] Value: %d | address: %p\n", rank, *a, a);
 
+	if(rank == 1)
+		printf("[Heap Seg] Rank: %d | [Users program] Value: %d | address: %p\n", rank, *b, b);
+
 	printf("[Data Seg] Rank: %d | [Users program] Value: %d | address: %p\n", rank, initSeg, &initSeg);
 	printf("[Stack Seg] Rank: %d | [Users program] Value: %d | address: %p\n", rank, oo, &oo);
+	printf("[Send recv Data] Rank: %d | [Users program] Value: %d\n", rank, sendRecvData);
 	
 	if(rank == 0) {
 		if(*a == 43)
@@ -137,6 +143,11 @@ int main(int argc, char** argv){
 			printf("[Stack Seg] Rank: %d | SUCCESS\n", rank);
 		else
 			printf("[Stack Seg] Rank: %d | FAIL\n", rank);
+
+		if(sendRecvData == 2019)
+			printf("[Send recv Data] Rank: %d | SUCCESS\n", rank);
+		else
+			printf("[Send recv Data] Rank: %d | FAIL\n", rank);
 	}
 
 	MPI_Finalize();

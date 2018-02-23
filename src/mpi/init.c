@@ -139,6 +139,8 @@ int MPI_Init(int *argc, char ***argv) {
 	if(ckpt_bit) {
 		while(is_file_update_set() != 1);
 	}
+
+	PMPI_Barrier(MPI_COMM_WORLD);
 }
 
 int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
@@ -148,7 +150,8 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 	// Not fault tolerant
 	if(node.node_checkpoint_master == YES) {
 		for(int i=0; i<job_list[dest].worker_count; i++) {
-			//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);	
+			//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
+			debug_log_i("SEND: Data: %d", *((int *)buf));
 			PMPI_Send(buf, count, datatype, (job_list[dest].rank_list)[i], tag, comm);
 		}
 	}
@@ -159,6 +162,7 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 	is_file_update_set();
 
 	PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm, status);
+	debug_log_i("RECV: Data: %d", *((int *)buf));
 }
 
 int MPI_Comm_rank(MPI_Comm comm, int *rank) {
