@@ -11,5 +11,5 @@ pipelines:
         script: # Modify the commands below to build your repository.
           - mkdir build
           - cd build
-          - ../configure
+          - ../configure CC=mpicc
           - make
