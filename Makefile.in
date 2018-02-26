@@ -15,6 +15,7 @@
 @SET_MAKE@
 
 
+
 VPATH = @srcdir@
 am__is_gnu_make = test -n '$(MAKEFILE_LIST)' && test -n '$(MAKELEVEL)'
 am__make_running_with_option = \
@@ -89,9 +90,9 @@ DIST_COMMON = $(srcdir)/src/Makefile.mk \
 	$(srcdir)/test/Makefile.mk $(srcdir)/Makefile.in \
 	$(srcdir)/Makefile.am $(top_srcdir)/configure \
 	$(am__configure_deps) $(top_srcdir)/build_aux/depcomp \
-	build_aux/ar-lib build_aux/compile build_aux/config.guess \
-	build_aux/config.sub build_aux/depcomp build_aux/install-sh \
-	build_aux/missing build_aux/ltmain.sh \
+	$(noinst_HEADERS) build_aux/ar-lib build_aux/compile \
+	build_aux/config.guess build_aux/config.sub build_aux/depcomp \
+	build_aux/install-sh build_aux/missing build_aux/ltmain.sh \
 	$(top_srcdir)/build_aux/ar-lib $(top_srcdir)/build_aux/compile \
 	$(top_srcdir)/build_aux/config.guess \
 	$(top_srcdir)/build_aux/config.sub \
@@ -256,6 +257,7 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+HEADERS = $(noinst_HEADERS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -413,10 +415,14 @@ top_srcdir = @top_srcdir@
 AM_CFLAGS = $(REP_CFLAGS) -O0 -g -dynamic
 lib_LTLIBRARIES = libreplication.la
 libreplication_la_SOURCES = src/mpi/init.c src/mpi/comm.c \
-	src/replication/rep.c src/replication/dataseg.c \
-	src/replication/stackseg.c src/replication/heapseg.c \
-	src/misc/file.c src/misc/log.c src/checkpoint/full_context.c
+	src/mpi/comm.h src/replication/rep.c src/replication/rep.h \
+	src/replication/dataseg.c src/replication/dataseg.h \
+	src/replication/stackseg.c src/replication/stackseg.h \
+	src/replication/heapseg.c src/replication/heapseg.h \
+	src/misc/file.c src/misc/file.h src/misc/log.c src/misc/log.h \
+	src/checkpoint/full_context.c src/checkpoint/full_context.h
 libreplication_la_CFLAGS = $(AM_CFLAGS)
+noinst_HEADERS = src/shared.h
 hello_SOURCES = src/manager/main.c src/replication/funprint.c src/replication/funprint.h
 reptest_LDADD = libreplication.la 
 reptest_SOURCES = test/rep_test.c
@@ -1117,7 +1123,7 @@ distcleancheck: distclean
 	       exit 1; } >&2
 check-am: all-am
 check: check-am
-all-am: Makefile $(LTLIBRARIES) $(PROGRAMS)
+all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(HEADERS)
 install-binPROGRAMS: install-libLTLIBRARIES
 
 installdirs:
