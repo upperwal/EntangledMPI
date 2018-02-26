@@ -4,7 +4,7 @@ lib/*
 build_cray
 build_delta
 build_turing
-
+build_*/
 
 # Ignore any executables
 bin/*
