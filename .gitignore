@@ -15,7 +15,7 @@ bin/*
 # Ignore autotools self generated files folders
 configure
 m4/
-build_aux
+build_aux/
 aclocal.m4
 Makefile.in
 /ar-lib
