@@ -25,22 +25,35 @@ extern _edata;				// Initialized Data Segment		: End
 extern __bss_start;			// Uninitialized Data Segment	: Start
 extern _end;				// Uninitialized Data Segment	: End
 
-int transferDataSeg(int rank, MPI_Comm comm) {
+extern Node node;
+
+int transfer_data_seg(MPI_Comm job_comm) {
+	log_i("Data Segment Init.");
+
+	debug_log_i("Node Address: %p | __data_start: %p | _edata: %p | __bss_start: %p | _end: %p", &node, &__data_start, &_edata, &__bss_start, &_end);
 	
-	transferInitDataSeg(rank, comm);
-	transferUnInitDataSeg(rank, comm);
+	PMPI_Barrier(job_comm);
+	transfer_init_data_seg(job_comm);
+	transfer_uninit_data_seg(job_comm);
 
-	#ifdef DEBUG
-	printf("Rank %d | __data_start: %p | _edata: %p | __bss_start: %p | _end: %p\n", rank, &__data_start, &_edata, &__bss_start, &_end);
-	#endif
-
+	log_i("Data Seg Transfer Ended.");
 }
 
-int transferInitDataSeg(int rank, MPI_Comm comm) {
+int transfer_init_data_seg(MPI_Comm job_comm) {
+
+	debug_log_i("Initialised Data Segment Init");
+
 	int countBytes = ((char *)&_edata - (char *)&__data_start);
+	// TODO: Check if countBytes + 1 is valid.
 	int success;
 
-	if(rank == 0) {
+	success = PMPI_Bcast(&__data_start, countBytes, MPI_BYTE, 0, job_comm);
+
+	int ranktt;
+	PMPI_Comm_rank(job_comm, &ranktt);
+	debug_log_i("Sending init data seg: Size: %d | Start Address: %p | Job_comm Rank: %d", countBytes, &__data_start, ranktt);
+
+	/*if(rank == 0) {
 		success = MPI_Send(&__data_start, countBytes, MPI_BYTE, 1, 1, comm);
 	}
 	else {
@@ -49,16 +62,27 @@ int transferInitDataSeg(int rank, MPI_Comm comm) {
 
 	#ifdef DEBUG
 	printf("Rank: %d | Init Seg Bytes: %d\n", rank, countBytes);
-	#endif
+	#endif*/
 
 	return success;
 }
 
-int transferUnInitDataSeg(int rank, MPI_Comm comm) {
+int transfer_uninit_data_seg(MPI_Comm job_comm) {
+
+	debug_log_i("UnInitialised Data Segment Init");
+
 	int countBytes = ((char *)&_end - (char *)&__bss_start);
 	int success;
+	
+	success = PMPI_Bcast(&__bss_start, countBytes, MPI_BYTE, 0, job_comm);
 
-	#ifdef DEBUG
+	int ranktt;
+	PMPI_Comm_rank(job_comm, &ranktt);
+
+	debug_log_i("Sending uninit data seg: Size: %d | Start Address: %p | Job_comm Rank: %d", countBytes, &__bss_start, ranktt);
+
+
+	/*#ifdef DEBUG
 	printf("Rank: %d | UnInit Seg Bytes: %d\n", rank, countBytes);
 	#endif
 
@@ -67,7 +91,10 @@ int transferUnInitDataSeg(int rank, MPI_Comm comm) {
 	}
 	else {
 		success = MPI_Recv(&__bss_start, countBytes, MPI_BYTE, 0, 2, comm, MPI_STATUS_IGNORE);
-	}
+	}*/
+
+	// Uninit Start: 0xa0b230 | End: 0xa51a60
+	// Uninit Start: 0xa0b230 | End: 0xa51a60
 
 	return success;
 }
