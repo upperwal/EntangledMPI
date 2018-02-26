@@ -12,4 +12,4 @@ pipelines:
           - mkdir build
           - cd build
           - ../configure
-          - make
+          - make CC=mpicc
