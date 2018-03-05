@@ -144,11 +144,11 @@ void restore_heap_seg() {
 	for(int i=0; i<malloc_number_of_allocations; i++) {
 		fread(&temp_container, sizeof(Malloc_container), 1, ckpt_file);
 
-		address *pointer_to_heap = (address *)temp_container.container_address;
+		address *realloc_address;
 
-		*pointer_to_heap = malloc(temp_container.size);
+		realloc_address = realloc((void *)temp_container.allocated_address, temp_container.size);
 
-		fread(*pointer_to_heap, temp_container.size, 1, ckpt_file);
+		fread(realloc_address, temp_container.size, 1, ckpt_file);
 
 		rep_append(temp_container);
 	}

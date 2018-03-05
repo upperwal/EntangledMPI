@@ -184,7 +184,7 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 			rep_clear_discontiguous();
 		}
 
-		heap_start = (address)malloc(total_malloc_allocation_size);
+		//heap_start = (address)malloc(total_malloc_allocation_size);
 	}
 
 	debug_log_i("Is Head NULL: %d", head == NULL);
@@ -208,6 +208,7 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 		if(rank == 0) {
 			container.container_address = (temp->container).container_address;
 			container.linked_address = (temp->container).linked_address;
+			container.allocated_address = (temp->container).allocated_address;
 			container.size = (temp->container).size;
 
 			temp = temp->next;
@@ -223,7 +224,16 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 
 		debug_log_i("After Container BCast");
 
-		if(container.size == 0 && container.linked_address != 0) {
+		if(rank != 0) {
+			address remalloc_address = realloc(container.allocated_address, container.size);
+			debug_log_i("Remalloc Address: %p", remalloc_address);
+		}
+
+		debug_log_i("Container allocated Address: %p", container.allocated_address);
+
+		PMPI_Bcast((void *)container.allocated_address, container.size, MPI_BYTE, 0, job_comm);
+
+		/*if(container.size == 0 && container.linked_address != 0) {
 			//printf("POINTER PROBLEM: | linked_address: %p | container_address: %p\n", container.linked_address, container.container_address);
 			if(rank != 0) {
 				address *src, *dest;
@@ -254,7 +264,7 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 			heap_start += container.size;
 
 			rep_append(container);
-		}
+		}*/
 	}
 
 	log_i("Heap Seg Transfer Ended.");
