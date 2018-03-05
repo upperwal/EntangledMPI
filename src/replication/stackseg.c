@@ -79,7 +79,7 @@ int transfer_stack_seg(MPI_Comm job_comm) {
 	PMPI_Bcast(&stackLAddComp, sizeof(address), MPI_BYTE, 0, job_comm);
 
 	if(stackLAddComp != stackLowerAddress) {
-		log_e("Compute and Replica Process Don not have same memory map. Stack High address differs");
+		log_e("Compute and Replica Process do not have same memory map. Stack High address differs");
 		MPI_Abort(MPI_COMM_WORLD, 1);
 	}
 

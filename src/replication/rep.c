@@ -2,7 +2,7 @@
 
 #include "src/shared.h"
 
-char *newStack;
+char newStack[2000];
 extern jmp_buf context;
 extern enum MapStatus map_status;
 
@@ -36,8 +36,9 @@ int is_file_update_set() {
 
 			copy_jmp_buf(context, copy_context);
 
-			// Create some space for new temp stack.
-			newStack = malloc(sizeof(char) * 2000);
+			// Create some space for new temp stack. [malloc here will disturb realloc in heap migration/checkpoint]
+			// This allocation is not removed to remember that this does not work.
+			//newStack = malloc(sizeof(char) * 2000);
 
 			debug_log_i("New stack lower address: %p | higher: %p", newStack, newStack + 1800);
 			
@@ -73,7 +74,10 @@ int is_file_update_set() {
 			debug_log_i("Works Awesome!!!!");
 
 			// Free space allocated for temp stack.
-			free(newStack);
+			// This allocation is not removed to remember that this does not work.
+			// realloc in heap migration might have an address collision with 'newStack' allocated
+			// address hence this throw a seg fault. Using data seg as temp stack instead.
+			//free(newStack);
 
 			debug_log_i("After longjmp | newStack address: %p", &newStack);
 
@@ -176,7 +180,7 @@ int readProcMapFile() {
 	ssize_t nread;
 	int lineNumber = 1;
 
-	MPI_Comm comm;
+	//MPI_Comm comm;
 
 	mapFilePtr = fopen("/proc/self/maps", "r");
 
@@ -188,7 +192,7 @@ int readProcMapFile() {
 	while((nread = getline(&line, &len, mapFilePtr)) != -1) {
 	    printf("%s", line);
 
-	    if(lineNumber == 2) {
+	    /*if(lineNumber == 2) {
 	    	char *secondAddr = NULL;
 	    	for(int i=0; i<nread; i++) {
 	    		if(line[i] == '-') {
@@ -206,7 +210,7 @@ int readProcMapFile() {
 	    	dataSegEnd = charArray2Long(secondAddr);
 	    }
 
-	    lineNumber++;
+	    lineNumber++;*/
 	}
 
 	//printf("%d\n", &_edata - &__data_start);

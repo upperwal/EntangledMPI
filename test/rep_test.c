@@ -37,11 +37,13 @@ void f1(int *a) {
 	f2(a);
 }
 
-int main(int argc, char** argv){
+int main(int argc, char** argv) {
 	int rank, size = 9, len, oo = 9, sendRecvData;
 	char procName[100];
 	int *a, *b;
 	char *c;
+
+	//readProcMapFile();
 
 	MPI_Init(&argc, &argv);
 
@@ -51,7 +53,7 @@ int main(int argc, char** argv){
 
 	pid = getpid();
 
-	printf("Process ID: %d\n", pid);
+	debug_log_i("Process ID: %d", pid);
 
 	/*if(node.rank == 1)
 		kill(pid, SIGBUS);*/
@@ -60,8 +62,8 @@ int main(int argc, char** argv){
 
 	printf("[USER CODE] Rank Address: %p\n", &rank);
 
-	/*if(rank == 1)
-		readProcMapFile();*/
+	/*if(rank == 1)*/
+	
 
 	if(rank == 0) {
 		rep_malloc(&a, sizeof(int));
