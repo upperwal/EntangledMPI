@@ -51,8 +51,10 @@ void *rep_thread_init(void *_stackHigherAddress) {
 			debug_log_i("Inside Modified file");
 
 			parse_map_file(map_file, &job_list, &node, &ckpt_backup);
+
+			update_comms();
 			
-			if( create_migration_comm(&job_comm, &rep_flag, &ckpt_backup) ) {
+			if(create_migration_comm(&job_comm, &rep_flag, &ckpt_backup) ) {
 				
 				pthread_mutex_lock(&rep_time_mutex);
 				

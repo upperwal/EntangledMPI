@@ -117,6 +117,48 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 	}
 }
 
+// responsible to update 'world_job_comm' and 'active_comm' [defined in src/shared.h]
+// 'world_job_comm': Communicator all all nodes in a job.
+// 'active_comm': Communicator of nodes, one from each job. So these can be called active nodes.
+void update_comms(int comm_key_world, int comm_key_job_world, int comm_key_active_nodes) {
+	int color = 0, rank_key = node.job_id;
+
+	// Although misguiding 'node.node_checkpoint_master' is not just used to mark a node
+	// which takes checkpoint on behalf of a job but it is also used to do communications
+	// amoung other jobs. Then the result is send to all nodes of 'this' job.
+	
+	// 'node.node_checkpoint_master == NO' are the nodes not responsible for checkpointing
+	// in this job.
+	if(node.node_checkpoint_master == NO) {
+		color = MPI_UNDEFINED;
+	}
+
+	PMPI_Comm_split(MPI_COMM_WORLD, color, rank_key, &(node.active_comm));
+
+	// Test
+	int rank;
+
+	if(node.active_comm != MPI_COMM_NULL) {
+		PMPI_Comm_rank(node.active_comm, &rank);
+		debug_log_i("Job ID: %d | active_comm Rank: %d", node.job_id, rank);
+	}
+	
+
+	color = node.job_id;
+	if(node.node_checkpoint_master == YES) {
+		rank_key = 0;
+	}
+	else {
+		rank_key = 1;
+	}
+
+	PMPI_Comm_split(MPI_COMM_WORLD, color, rank_key, &(node.world_job_comm));
+
+	// Test
+	PMPI_Comm_rank(node.world_job_comm, &rank);
+	debug_log_i("Job ID: %d | world_job_comm Rank: %d", node.job_id, rank);
+}
+
 /* Returns 1 if comm is valid on this node, else 0. */
 int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ckpt_backup) {
 	/* 								this^
