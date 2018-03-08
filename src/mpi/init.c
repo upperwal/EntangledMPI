@@ -176,7 +176,16 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 }
 
 int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
-	int dsize;
+	
+	if(node.active_comm != MPI_COMM_NULL) {
+		PMPI_Scatter(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, node.active_comm);
+	}
+
+	PMPI_Bcast(recvbuf, recvcount, recvtype, 0, node.world_job_comm);
+
+	return MPI_SUCCESS;
+
+	/*int dsize;
 
 	if(node.job_id == root) {
 		MPI_Type_size(sendtype, &dsize);
@@ -192,11 +201,22 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
         MPI_Recv(recvbuf, recvcount, recvtype, root, 12, comm, MPI_STATUS_IGNORE);
     }
 
-    return MPI_SUCCESS;
+    return MPI_SUCCESS;*/
 }
 
 int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
-	int dsize;
+	
+	if(node.active_comm != MPI_COMM_NULL) {
+		PMPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, node.active_comm);
+	}
+
+	if(node.job_id == root) {
+		PMPI_Bcast(recvbuf, recvcount * node.jobs_count, recvtype, 0, node.world_job_comm);
+	}
+
+	return MPI_SUCCESS;
+
+	/*int dsize;
 
     if(node.job_id == root) {
     	MPI_Type_size(sendtype, &dsize);
@@ -211,7 +231,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
         MPI_Send(sendbuf, sendcount, sendtype, root, 13, comm);
     }
 
-    return MPI_SUCCESS;
+    return MPI_SUCCESS;*/
     
 }
 
@@ -232,6 +252,10 @@ int MPI_Bcast(void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
 	// Is comm split an efficient method.
 	// What if replica node is allowed to receive data even though it already has it.
 	// Will it be more efficient as compared to creating a new comm for Bcast?
+
+	// Found something.
+	// This would require all nodes to know rank of sending node. This we have to send to all the nodes.
+	// This is an overhead. Its better to split and remove replica before. Like done here.
 	PMPI_Comm_split(comm, color, rank_order, &bcast_comm);
 	
 	if(color == 1) {
@@ -240,6 +264,21 @@ int MPI_Bcast(void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
 }
 
 int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
+	
+	if(node.active_comm != MPI_COMM_NULL) {
+		PMPI_Allgather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, node.active_comm);
+	}
+
+	if(job_list[node.job_id].worker_count > 1) {
+		int rank;
+		PMPI_Comm_rank(node.world_job_comm, &rank);
+		debug_log_i("job_list[node.job_id].worker_count: %d | Rank: %d", job_list[node.job_id].worker_count, rank);
+		PMPI_Bcast(recvbuf, recvcount * node.jobs_count, recvtype, 0, node.world_job_comm);
+	}
+	
+	return MPI_SUCCESS;
+
+/*
 	MPI_Comm gather_comm;
 	int color = 1;
 	int send_rank = node.rank;
@@ -258,5 +297,37 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 		PMPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, 0, gather_comm);
 	}
 
-	return PMPI_Bcast(recvbuf, recvcount * node.jobs_count, recvtype, sync_rank, comm);
+	return PMPI_Bcast(recvbuf, recvcount * node.jobs_count, recvtype, sync_rank, comm);*/
+}
+
+int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm) {
+	if(node.active_comm != MPI_COMM_NULL) {
+		PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, node.active_comm);
+		if(node.job_id == root)
+			debug_log_i("OP Value: %d", *((int *)recvbuf));
+	}
+
+	if(node.job_id == root && job_list[node.job_id].worker_count > 1) {
+		/*int rank;
+		PMPI_Comm_rank(node.world_job_comm, &rank);
+		debug_log_i("job_list[node.job_id].worker_count: %d | Rank: %d", job_list[node.job_id].worker_count, rank);*/
+		PMPI_Bcast(recvbuf, count, datatype, 0, node.world_job_comm);
+	}
+	
+	return MPI_SUCCESS;
+}
+
+int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm comm) {
+	if(node.active_comm != MPI_COMM_NULL) {
+		PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, node.active_comm);
+	}
+
+	if(job_list[node.job_id].worker_count > 1) {
+		/*int rank;
+		PMPI_Comm_rank(node.world_job_comm, &rank);
+		debug_log_i("job_list[node.job_id].worker_count: %d | Rank: %d", job_list[node.job_id].worker_count, rank);*/
+		PMPI_Bcast(recvbuf, count, datatype, 0, node.world_job_comm);
+	}
+	
+	return MPI_SUCCESS;
 }

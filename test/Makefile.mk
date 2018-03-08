@@ -7,7 +7,9 @@ noinst_PROGRAMS = 	rep_test 				\
 					scatter_test 			\
 					gather_test 			\
 					bcast_test 				\
-					allgather_test
+					allgather_test 			\
+					reduce_test 			\
+					allreduce_test
 
 rep_test_LDADD = libreplication.la 
 rep_test_SOURCES = test/rep_test.c
@@ -58,3 +60,13 @@ allgather_test_LDADD = libreplication.la
 allgather_test_SOURCES = test/allgather_test.c
 allgather_test_LDFLAGS = -no-install
 allgather_test_CFLAGS = $(AM_CFLAGS)
+
+reduce_test_LDADD = libreplication.la
+reduce_test_SOURCES = test/reduce_test.c
+reduce_test_LDFLAGS = -no-install
+reduce_test_CFLAGS = $(AM_CFLAGS)
+
+allreduce_test_LDADD = libreplication.la
+allreduce_test_SOURCES = test/allreduce_test.c
+allreduce_test_LDFLAGS = -no-install
+allreduce_test_CFLAGS = $(AM_CFLAGS)

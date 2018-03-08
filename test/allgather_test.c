@@ -3,6 +3,8 @@
 
 #define DATA_SIZE 4
 
+extern Node node;
+
 int main(int argc, char** argv){
 	MPI_Init(&argc, &argv);
 
@@ -29,10 +31,10 @@ int main(int argc, char** argv){
 	}
 
 	if(success) {
-		printf("Rank: %d SUCCESS\n", rank);
+		printf("Rank: %d SUCCESS\n", node.rank);
 	}
 	else {
-		printf("Rank: %d FAIL\n", rank);
+		printf("Rank: %d FAIL\n", node.rank);
 	}
 	
 	MPI_Finalize();
