@@ -18,6 +18,7 @@ int init_node(char *file_name, Job **job_list, Node *node) {
 	(*node).job_id = -1;
 
 	parse_map_file(file_name, job_list, node, &ckpt_backup);
+	update_comms();
 
 	// parse_map_file will set "node_transit_state" to "NODE_DATA_RECEIVER"
 	// because it thinks all nodes are newly added to this job.
