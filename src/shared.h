@@ -46,7 +46,7 @@ typedef struct Nodes {
 	int jobs_count;
 	enum NodeTransitState node_transit_state;
 	enum NodeCheckpointMaster node_checkpoint_master;
-	MPI_Comm world_job_comm; 		// Communicator all all nodes in a job.
+	MPI_Comm world_job_comm; 		// Communicator to all nodes in a job.
 	MPI_Comm active_comm;			// Communicator of nodes, one from each job. So these can be called active nodes.
 } Node;
 

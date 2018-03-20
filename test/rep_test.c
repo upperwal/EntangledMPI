@@ -15,6 +15,9 @@ void f4(int *a) {
 	sleep(10);
 	MPI_Send(a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 
+	if(node.rank == 1)
+		exit(EXIT_FAILURE);
+
 	sleep(10);
 	MPI_Send(a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 
@@ -54,7 +57,23 @@ int main(int argc, char** argv){
 	printf("Process ID: %d\n", pid);
 
 	/*if(node.rank == 1)
-		kill(pid, SIGBUS);*/
+		exit(EXIT_FAILURE);
+
+	MPI_Comm new_comm;
+	int sc = MPIX_Comm_shrink(node.world_job_comm, &new_comm);
+
+	if(sc != MPI_SUCCESS) {
+		char str[500];
+		int len;
+		MPI_Error_string(sc, str, &len);
+		printf("Rank: %d | Shrink not success | Message: %s\n", node.rank, str);
+	}
+
+	int rk, sz;
+	PMPI_Comm_size(new_comm, &sz);
+	PMPI_Comm_rank(new_comm, &rk);
+
+	printf("Rank: %d | After Shrink | Rank: %d | Size: %d\n", node.rank, rk, sz);*/
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
