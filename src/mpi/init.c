@@ -1,11 +1,14 @@
 #include <mpi.h>
+#include <mpi-ext.h>
 #include <stdio.h>
+#include <signal.h>
 
 #include "src/shared.h"
 #include "src/replication/rep.h"
 #include "src/misc/file.h"
 #include "src/mpi/comm.h"
 #include "src/checkpoint/full_context.h"
+#include "src/mpi/ulfm.h"
 
 #define REP_THREAD_SLEEP_TIME 3
 
@@ -28,6 +31,8 @@ enum CkptBackup ckpt_backup;
 
 // this comm contains sender and receiver nodes during replication.
 MPI_Comm job_comm;
+
+MPI_Errhandler ulfm_err_handler;
 
 extern Malloc_list *head;
 
@@ -97,9 +102,17 @@ void *rep_thread_init(void *_stackHigherAddress) {
 }
 
 int MPI_Init(int *argc, char ***argv) {
+	debug_log_i("Initialising MPI.");
+
 	int ckpt_bit;
 	PMPI_Init(argc, argv);
 
+	PMPI_Comm_create_errhandler(rep_errhandler, &ulfm_err_handler);
+	//PMPI_Comm_set_errhandler(MPI_COMM_WORLD, ulfm_err_handler);
+
+	PMPI_Comm_dup(MPI_COMM_WORLD, &(node.rep_mpi_comm_world));
+	PMPI_Comm_set_errhandler(node.rep_mpi_comm_world, ulfm_err_handler);
+	
 	if(argv == NULL) {
 		debug_log_e("You must pass &argv to MPI_Init()");
 		exit(0);
@@ -142,7 +155,7 @@ int MPI_Init(int *argc, char ***argv) {
 		while(is_file_update_set() != 1);
 	}
 
-	PMPI_Barrier(MPI_COMM_WORLD);
+	PMPI_Barrier(node.rep_mpi_comm_world);
 }
 
 int MPI_Comm_rank(MPI_Comm comm, int *rank) {
@@ -197,7 +210,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 		debug_log_i("After Send barrier | Is status: %d | MPI_SUCCESS: %d", mpi_status, MPI_SUCCESS);
 		//MPIX_Comm_failure_ack(node.world_job_comm);
 		
-		ulfm_detect(mpi_status);
+		//ulfm_detect(mpi_status);
 
 		// if this status is not MPI_SUCCESS a sender node has died.
 		// TODO: What if replica died. This will increment the sender which is incorrect.
@@ -218,7 +231,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 				MPI_Error_string(mpi_status, str, &len);
 				debug_log_i("Expected MPI_SUCCESS from MPIX_Comm_shrink. Received: %s\n", str);
 				//errs++;
-				MPI_Abort(MPI_COMM_WORLD, 1);
+				MPI_Abort(node.rep_mpi_comm_world, 1);
 			}
 			// DEBUG CODE ENDS
 
@@ -282,41 +295,166 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 }
 
 int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
-	int mpi_status;
-	if(node.active_comm != MPI_COMM_NULL) {
-		mpi_status = PMPI_Scatter(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, node.active_comm);	
+	debug_log_i("MPI_Scatter Call");
+	int mpi_status = MPI_SUCCESS;
+	int flag;
+	MPI_Comm comm_to_use;
+
+	is_file_update_set();
+
+	
+
+	do {
+
+		if(comm == MPI_COMM_WORLD) {
+			comm_to_use = node.rep_mpi_comm_world;
+		}
+
+		if(node.active_comm != MPI_COMM_NULL) {
+			mpi_status = PMPI_Scatter(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, node.active_comm);	
+		}
+
+		flag = (MPI_SUCCESS == mpi_status);
+
+		// To correct the comms
+		if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+			debug_log_i("First Comm agree");
+			flag = 0;
+			continue;
+		}
+		// To perform agree on flag
+		PMPIX_Comm_agree(comm_to_use, &flag);
+
+		if(!flag) {
+			debug_log_i("MPI_Scatter Failed");
+			flag = 0;
+			continue;
+		}
+		else {
+
+			/*if(node.rank == 1)
+				raise(SIGKILL);*/
+			
+			do {
+
+				debug_log_i("Doing Bcast");
+				mpi_status = PMPI_Bcast(recvbuf, recvcount, recvtype, 0, node.world_job_comm);
+				debug_log_i("Aftter bcast: MPI_Status: %d", mpi_status == MPI_SUCCESS);
+				flag = (MPI_SUCCESS == mpi_status);
+				
+				// To correct the comms
+				if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+					flag = 0;
+				}
+				// To perform agree on flag
+				PMPIX_Comm_agree(comm_to_use, &flag);
+
+				debug_log_i("[Value flag]: %d", flag);
+				if(!flag) {
+					debug_log_i("MPI_Bcast Failed");
+
+					// If failed node is root node in node.world_job_comm, data is lost 
+					// and main operation needs to be done again before doing bcast.
+					if(is_failed_node_world_job_comm_root()) {
+						debug_log_i("node.world_job_comm root node died. Doing main communication again");
+						flag = 0;
+						break;
+					}
+				}
+
+			} while(!flag);
+			
+		}
+
 		
-		ulfm_detect(mpi_status);
-	}
 
-	mpi_status = PMPI_Bcast(recvbuf, recvcount, recvtype, 0, node.world_job_comm);
-
-	ulfm_detect(mpi_status);
+	} while(!flag);
 
 	return MPI_SUCCESS;
-
-	/*int dsize;
-
-	if(node.job_id == root) {
-		MPI_Type_size(sendtype, &dsize);
-
-       	for(int i=0; i<node.jobs_count; i++) {
-            if(root == i)
-                continue;
-            MPI_Send(sendbuf + sendcount * i * dsize, sendcount, sendtype, i, 12, comm);
-        }
-        memcpy(recvbuf, sendbuf + sendcount * node.job_id * dsize, dsize * recvcount);
-    }
-    else {
-        MPI_Recv(recvbuf, recvcount, recvtype, root, 12, comm, MPI_STATUS_IGNORE);
-    }
-
-    return MPI_SUCCESS;*/
 }
 
 int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
 	
-	if(node.active_comm != MPI_COMM_NULL) {
+	debug_log_i("MPI_Gather Call");
+	int mpi_status = MPI_SUCCESS;
+	int flag;
+	MPI_Comm comm_to_use;
+
+	is_file_update_set();
+
+	
+
+	do {
+
+		if(comm == MPI_COMM_WORLD) {
+			comm_to_use = node.rep_mpi_comm_world;
+		}
+
+		if(node.active_comm != MPI_COMM_NULL) {
+			mpi_status = PMPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, node.active_comm);
+		}
+
+		flag = (MPI_SUCCESS == mpi_status);
+
+		// To correct the comms
+		if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+			debug_log_i("First Comm agree");
+			flag = 0;
+			continue;
+		}
+		// To perform agree on flag
+		PMPIX_Comm_agree(comm_to_use, &flag);
+
+		if(!flag) {
+			debug_log_i("MPI_Gather Failed");
+			flag = 0;
+			continue;
+		}
+		else {
+
+			/*if(node.rank == 1)
+				raise(SIGKILL);*/
+			
+			do {
+
+				debug_log_i("Doing Bcast");
+				mpi_status = PMPI_Bcast(recvbuf, recvcount * node.jobs_count, recvtype, 0, node.world_job_comm);
+				debug_log_i("Aftter bcast: MPI_Status: %d", mpi_status == MPI_SUCCESS);
+				flag = (MPI_SUCCESS == mpi_status);
+				
+				// To correct the comms
+				if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+					flag = 0;
+				}
+				// To perform agree on flag
+				PMPIX_Comm_agree(comm_to_use, &flag);
+
+				debug_log_i("[Value flag]: %d", flag);
+				if(!flag) {
+					debug_log_i("MPI_Bcast Failed");
+
+					// If failed node is root node in node.world_job_comm, data is lost 
+					// and main operation needs to be done again before doing bcast.
+					if(is_failed_node_world_job_comm_root()) {
+						debug_log_i("node.world_job_comm root node died. Doing main communication again");
+						flag = 0;
+						break;
+					}
+				}
+
+			} while(!flag);
+			
+		}
+
+		
+
+	} while(!flag);
+
+	return MPI_SUCCESS;
+
+
+
+	/*if(node.active_comm != MPI_COMM_NULL) {
 		PMPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, node.active_comm);
 	}
 
@@ -325,7 +463,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 		PMPI_Bcast(recvbuf, recvcount * node.jobs_count, recvtype, 0, node.world_job_comm);
 	}
 
-	return MPI_SUCCESS;
+	return MPI_SUCCESS;*/
 
 	/*int dsize;
 
@@ -347,7 +485,46 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 }
 
 int MPI_Bcast(void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
-	int color = 1;
+
+	int mpi_status = MPI_SUCCESS;
+	int flag;
+	MPI_Comm comm_to_use;
+
+	is_file_update_set();
+
+	do {
+		if(comm == MPI_COMM_WORLD) {
+			comm_to_use = node.rep_mpi_comm_world;
+		}
+
+		debug_log_i("Starting bcast: Comm: %p | node.rep_comm: %p | Comm to use: %p", comm, node.rep_mpi_comm_world, comm_to_use);
+		mpi_status = PMPI_Bcast(buffer, count, datatype, 0, comm_to_use);
+		debug_log_i("bcast done");
+
+
+		flag = (MPI_SUCCESS == mpi_status);
+
+		// To correct the comms
+		if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+			debug_log_i("First Comm agree");
+			flag = 0;
+			//continue;
+		}
+		// To perform agree on flag
+		PMPIX_Comm_agree(comm_to_use, &flag);
+
+		if(!flag) {
+			debug_log_i("MPI_Bcast Failed");
+			flag = 0;
+			//continue;
+		}
+
+	} while(!flag);
+
+	return MPI_SUCCESS;
+
+
+	/*int color = 1;
 	int rank_order = 1;
 	MPI_Comm bcast_comm;
 	
@@ -371,12 +548,89 @@ int MPI_Bcast(void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
 	
 	if(color == 1) {
 		return PMPI_Bcast(buffer, count, datatype, 0, bcast_comm);
-	}
+	}*/
 }
 
 int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
-	
-	if(node.active_comm != MPI_COMM_NULL) {
+		
+	debug_log_i("MPI_Allgather Call");
+	int mpi_status = MPI_SUCCESS;
+	int flag;
+	MPI_Comm comm_to_use;
+
+	is_file_update_set();
+
+	do {
+
+		if(comm == MPI_COMM_WORLD) {
+			comm_to_use = node.rep_mpi_comm_world;
+		}
+
+		if(node.active_comm != MPI_COMM_NULL) {
+			mpi_status = PMPI_Allgather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, node.active_comm);
+		}
+
+		flag = (MPI_SUCCESS == mpi_status);
+
+		// To correct the comms
+		if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+			debug_log_i("First Comm agree");
+			flag = 0;
+			continue;
+		}
+		// To perform agree on flag
+		PMPIX_Comm_agree(comm_to_use, &flag);
+
+		if(!flag) {
+			debug_log_i("MPI_Allgather Failed");
+			flag = 0;
+			continue;
+		}
+		else {
+
+			/*if(node.rank == 1)
+				raise(SIGKILL);*/
+			
+			do {
+
+				debug_log_i("Doing Bcast");
+				mpi_status = PMPI_Bcast(recvbuf, recvcount * node.jobs_count, recvtype, 0, node.world_job_comm);
+				debug_log_i("Aftter bcast: MPI_Status: %d", mpi_status == MPI_SUCCESS);
+				flag = (MPI_SUCCESS == mpi_status);
+				
+				// To correct the comms
+				if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+					flag = 0;
+				}
+				// To perform agree on flag
+				PMPIX_Comm_agree(comm_to_use, &flag);
+
+				debug_log_i("[Value flag]: %d", flag);
+				if(!flag) {
+					debug_log_i("MPI_Bcast Failed");
+
+					// If failed node is root node in node.world_job_comm, data is lost 
+					// and main operation needs to be done again before doing bcast.
+					if(is_failed_node_world_job_comm_root()) {
+						debug_log_i("node.world_job_comm root node died. Doing main communication again");
+						flag = 0;
+						break;
+					}
+				}
+
+			} while(!flag);
+			
+		}
+
+		
+
+	} while(!flag);
+
+	return MPI_SUCCESS;
+
+
+
+	/*if(node.active_comm != MPI_COMM_NULL) {
 		PMPI_Allgather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, node.active_comm);
 	}
 
@@ -387,7 +641,9 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 		PMPI_Bcast(recvbuf, recvcount * node.jobs_count, recvtype, 0, node.world_job_comm);
 	}
 	
-	return MPI_SUCCESS;
+	return MPI_SUCCESS;*/
+
+
 
 /*
 	MPI_Comm gather_comm;
@@ -412,33 +668,193 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 }
 
 int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm) {
-	if(node.active_comm != MPI_COMM_NULL) {
+	
+	debug_log_i("MPI_Reduce Call");
+	int mpi_status = MPI_SUCCESS;
+	int flag;
+	MPI_Comm comm_to_use;
+
+	is_file_update_set();
+
+	do {
+
+		if(comm == MPI_COMM_WORLD) {
+			comm_to_use = node.rep_mpi_comm_world;
+		}
+
+		if(node.active_comm != MPI_COMM_NULL) {
+			mpi_status = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, node.active_comm);
+		}
+
+		flag = (MPI_SUCCESS == mpi_status);
+
+		// To correct the comms
+		if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+			debug_log_i("First Comm agree");
+			flag = 0;
+			continue;
+		}
+		// To perform agree on flag
+		PMPIX_Comm_agree(comm_to_use, &flag);
+
+		if(!flag) {
+			debug_log_i("MPI_Reduce Failed");
+			flag = 0;
+			continue;
+		}
+		else {
+
+			/*if(node.rank == 1)
+				raise(SIGKILL);*/
+			
+			do {
+				if(node.job_id == root) {
+					debug_log_i("Doing Bcast");
+					mpi_status = PMPI_Bcast(recvbuf, count, datatype, 0, node.world_job_comm);
+					debug_log_i("Aftter bcast: MPI_Status: %d", mpi_status == MPI_SUCCESS);
+				}
+				else {
+					mpi_status = MPI_SUCCESS;
+				}
+				flag = (MPI_SUCCESS == mpi_status);
+				
+				// To correct the comms
+				if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+					flag = 0;
+				}
+				// To perform agree on flag
+				PMPIX_Comm_agree(comm_to_use, &flag);
+
+				debug_log_i("[Value flag]: %d", flag);
+				if(!flag) {
+					debug_log_i("MPI_Bcast Failed");
+
+					// If failed node is root node in node.world_job_comm, data is lost 
+					// and main operation needs to be done again before doing bcast.
+					if(is_failed_node_world_job_comm_root()) {
+						debug_log_i("node.world_job_comm root node died. Doing main communication again");
+						flag = 0;
+						break;
+					}
+				}
+
+			} while(!flag);
+			
+		}
+
+		
+
+	} while(!flag);
+
+	return MPI_SUCCESS;
+
+
+
+
+	/*if(node.active_comm != MPI_COMM_NULL) {
 		PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, node.active_comm);
 		if(node.job_id == root)
 			debug_log_i("OP Value: %d", *((int *)recvbuf));
 	}
 
 	if(node.job_id == root && job_list[node.job_id].worker_count > 1) {
-		/*int rank;
-		PMPI_Comm_rank(node.world_job_comm, &rank);
-		debug_log_i("job_list[node.job_id].worker_count: %d | Rank: %d", job_list[node.job_id].worker_count, rank);*/
+		//int rank;
+		//PMPI_Comm_rank(node.world_job_comm, &rank);
+		//debug_log_i("job_list[node.job_id].worker_count: %d | Rank: %d", job_list[node.job_id].worker_count, rank);
 		PMPI_Bcast(recvbuf, count, datatype, 0, node.world_job_comm);
 	}
 	
-	return MPI_SUCCESS;
+	return MPI_SUCCESS;*/
 }
 
 int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm comm) {
-	if(node.active_comm != MPI_COMM_NULL) {
+	
+	debug_log_i("MPI_Allreduce Call");
+	int mpi_status = MPI_SUCCESS;
+	int flag;
+	MPI_Comm comm_to_use;
+
+	is_file_update_set();
+
+	do {
+
+		if(comm == MPI_COMM_WORLD) {
+			comm_to_use = node.rep_mpi_comm_world;
+		}
+
+		if(node.active_comm != MPI_COMM_NULL) {
+			mpi_status = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, node.active_comm);
+		}
+
+		flag = (MPI_SUCCESS == mpi_status);
+
+		// To correct the comms
+		if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+			debug_log_i("First Comm agree");
+			flag = 0;
+			continue;
+		}
+		// To perform agree on flag
+		PMPIX_Comm_agree(comm_to_use, &flag);
+
+		if(!flag) {
+			debug_log_i("MPI_Allreduce Failed");
+			flag = 0;
+			continue;
+		}
+		else {
+
+			/*if(node.rank == 1)
+				raise(SIGKILL);*/
+			
+			do {
+
+				debug_log_i("Doing Bcast");
+				mpi_status = PMPI_Bcast(recvbuf, count, datatype, 0, node.world_job_comm);
+				debug_log_i("Aftter bcast: MPI_Status: %d", mpi_status == MPI_SUCCESS);
+				flag = (MPI_SUCCESS == mpi_status);
+				
+				// To correct the comms
+				if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+					flag = 0;
+				}
+				// To perform agree on flag
+				PMPIX_Comm_agree(comm_to_use, &flag);
+
+				debug_log_i("[Value flag]: %d", flag);
+				if(!flag) {
+					debug_log_i("MPI_Bcast Failed");
+
+					// If failed node is root node in node.world_job_comm, data is lost 
+					// and main operation needs to be done again before doing bcast.
+					if(is_failed_node_world_job_comm_root()) {
+						debug_log_i("node.world_job_comm root node died. Doing main communication again");
+						flag = 0;
+						break;
+					}
+				}
+
+			} while(!flag);
+			
+		}
+
+		
+
+	} while(!flag);
+
+	return MPI_SUCCESS;
+
+
+	/*if(node.active_comm != MPI_COMM_NULL) {
 		PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, node.active_comm);
 	}
 
 	if(job_list[node.job_id].worker_count > 1) {
-		/*int rank;
-		PMPI_Comm_rank(node.world_job_comm, &rank);
-		debug_log_i("job_list[node.job_id].worker_count: %d | Rank: %d", job_list[node.job_id].worker_count, rank);*/
+		// int rank;
+		// PMPI_Comm_rank(node.world_job_comm, &rank);
+		// debug_log_i("job_list[node.job_id].worker_count: %d | Rank: %d", job_list[node.job_id].worker_count, rank);
 		PMPI_Bcast(recvbuf, count, datatype, 0, node.world_job_comm);
 	}
 	
-	return MPI_SUCCESS;
+	return MPI_SUCCESS;*/
 }

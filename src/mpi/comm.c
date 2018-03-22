@@ -1,14 +1,17 @@
 #include "comm.h"
 
 extern Node node;
+extern Job *job_list;
 
 extern enum CkptBackup ckpt_backup;
+
+extern MPI_Errhandler ulfm_err_handler;
 
 int init_node(char *file_name, Job **job_list, Node *node) {
 	debug_log_i("Initiating Node and Jobs data from file.");
 	
 	int my_rank;
-	PMPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+	PMPI_Comm_rank((*node).rep_mpi_comm_world, &my_rank);
 
 	// Remember to update this rank after migration.
 	(*node).rank = my_rank;
@@ -121,7 +124,7 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 // responsible to update 'world_job_comm' and 'active_comm' [defined in src/shared.h]
 // 'world_job_comm': Communicator all all nodes in a job.
 // 'active_comm': Communicator of nodes, one from each job. So these can be called active nodes.
-void update_comms(int comm_key_world, int comm_key_job_world, int comm_key_active_nodes) {
+void update_comms() {
 	int color = 0, rank_key = node.job_id;
 
 	// Although misguiding 'node.node_checkpoint_master' is not just used to mark a node
@@ -134,7 +137,8 @@ void update_comms(int comm_key_world, int comm_key_job_world, int comm_key_activ
 		color = MPI_UNDEFINED;
 	}
 
-	PMPI_Comm_split(MPI_COMM_WORLD, color, rank_key, &(node.active_comm));
+	PMPI_Comm_split(node.rep_mpi_comm_world, color, rank_key, &(node.active_comm));
+	//PMPI_Comm_set_errhandler(node.active_comm, ulfm_err_handler);
 
 	// Test
 	int rank;
@@ -153,7 +157,8 @@ void update_comms(int comm_key_world, int comm_key_job_world, int comm_key_activ
 		rank_key = 1;
 	}
 
-	PMPI_Comm_split(MPI_COMM_WORLD, color, rank_key, &(node.world_job_comm));
+	PMPI_Comm_split(node.rep_mpi_comm_world, color, rank_key, &(node.world_job_comm));
+	//PMPI_Comm_set_errhandler(node.world_job_comm, ulfm_err_handler);
 
 	// Test
 	PMPI_Comm_rank(node.world_job_comm, &rank);
@@ -194,9 +199,18 @@ int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ck
 
 	debug_log_i("Color: %d | key: %d | job_comm: %p", color, key, job_comm);
 
-	PMPI_Comm_split(MPI_COMM_WORLD, color, key, job_comm);
+	PMPI_Comm_split(node.rep_mpi_comm_world, color, key, job_comm);
 
 	debug_log_i("Create Migration Comm: flag: %d | ckpt master: %d", flag, node.node_checkpoint_master);
 	
 	return (flag || node.node_checkpoint_master);
+}
+
+// TODO: Print only workers which are assigned.
+void print_job_list() {
+	for(int i=0; i<node.jobs_count; i++) {
+		
+		debug_log_i("MyJobId: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d | Checkpoint: %d", node.job_id, job_list[i].job_id, job_list[i].worker_count, job_list[i].rank_list[0], job_list[i].rank_list[1], node.node_checkpoint_master);
+
+	}
 }

@@ -15,6 +15,9 @@ int main(int argc, char** argv){
 	MPI_Comm_size(comm, &size);
 	MPI_Comm_rank(comm, &rank);
 
+	if(node.rank == 0)
+		exit(EXIT_FAILURE);
+
 	rep_malloc(&arr_recv, sizeof(int) * size * DATA_SIZE);
 
 	rep_malloc(&arr_send, sizeof(int) * DATA_SIZE);
@@ -31,10 +34,10 @@ int main(int argc, char** argv){
 	}
 
 	if(success) {
-		printf("Rank: %d SUCCESS\n", node.rank);
+		printf("Rank: %d SUCCESS\n", rank);
 	}
 	else {
-		printf("Rank: %d FAIL\n", node.rank);
+		printf("Rank: %d FAIL\n", rank);
 	}
 	
 	MPI_Finalize();

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <signal.h>
 #include "src/replication/rep.h"
 
 #define DATA_SIZE 4
@@ -15,8 +16,11 @@ int main(int argc, char** argv){
 	MPI_Comm_size(comm, &size);
 	MPI_Comm_rank(comm, &rank);
 
-	if(node.rank == 1)
-		exit(EXIT_FAILURE);
+	if(node.rank == 0)
+		raise(SIGKILL);
+
+	//int mpi_status = PMPI_Barrier(MPI_COMM_WORLD);
+	//printf("User: Status: %d\n", mpi_status);
 
 	if(rank == 0) {
 		rep_malloc(&arr_send, sizeof(int) * size * DATA_SIZE);
