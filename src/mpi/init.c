@@ -81,8 +81,8 @@ void *rep_thread_init(void *_stackHigherAddress) {
 				else {
 				
 					// Checkpoint creation
-					if(node.node_checkpoint_master == YES)
-						init_ckpt(ckpt_file);
+					/*if(node.node_checkpoint_master == YES)
+						init_ckpt(ckpt_file);*/
 
 					// Replica creation
 					if(rep_flag)
@@ -102,21 +102,30 @@ void *rep_thread_init(void *_stackHigherAddress) {
 }
 
 int MPI_Init(int *argc, char ***argv) {
-	debug_log_i("Initialising MPI.");
 
 	int ckpt_bit;
 	PMPI_Init(argc, argv);
+
+
 
 	PMPI_Comm_create_errhandler(rep_errhandler, &ulfm_err_handler);
 	//PMPI_Comm_set_errhandler(MPI_COMM_WORLD, ulfm_err_handler);
 
 	PMPI_Comm_dup(MPI_COMM_WORLD, &(node.rep_mpi_comm_world));
 	PMPI_Comm_set_errhandler(node.rep_mpi_comm_world, ulfm_err_handler);
+
+	// job_list and node declared in shared.h
+	init_node(map_file, &job_list, &node);
+
+	debug_log_i("Initialising MPI.");
+	debug_log_i("Node variable address: %p", &node);
 	
 	if(argv == NULL) {
 		debug_log_e("You must pass &argv to MPI_Init()");
 		exit(0);
 	}
+
+	debug_log_i("WORLD_COMM Dup: %p", node.rep_mpi_comm_world);
 
 	address stackStart;
 
@@ -132,15 +141,13 @@ int MPI_Init(int *argc, char ***argv) {
 
 	stackStart = *argv;
 
-	debug_log_i("Address Stack new: %p", stackStart);
 	// Lock global mutex. This mutex will always be locked when user program is executing.
 	pthread_mutex_init(&global_mutex, NULL);
 	pthread_mutex_init(&rep_time_mutex, NULL);
 	
 	pthread_mutex_lock(&global_mutex);
 
-	// job_list and node declared in shared.h
-	init_node(map_file, &job_list, &node);
+	debug_log_i("Address Stack new: %p", stackStart);
 
 	ckpt_bit = does_ckpt_file_exists(ckpt_file);
 
@@ -171,7 +178,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 	is_file_update_set();
 	debug_log_i("In MPI_Send() after is_file_update_set");
 
-	int sender = 0;
+	/*int sender = 0;
 	int mpi_status;
 
 	//while(sender < job_list[node.job_id].worker_count) {
@@ -214,7 +221,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 
 		// if this status is not MPI_SUCCESS a sender node has died.
 		// TODO: What if replica died. This will increment the sender which is incorrect.
-		/*if(mpi_status == MPI_ERR_PROC_FAILED) {
+		if(mpi_status == MPI_ERR_PROC_FAILED) {
 			debug_log_i("Died Rank: %d", (job_list[node.job_id].rank_list)[sender]);
 			MPI_Comm new_job_comm;
 
@@ -251,17 +258,17 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 		else {
 			debug_log_i("Rank: %d able to send to all", (job_list[node.job_id].rank_list)[sender]);
 			//break;
-		}*/
-	}
+		}
+	}*/
 
 	// Not fault tolerant
 	/*if(node.node_checkpoint_master == YES) {
 		for(int i=0; i<job_list[dest].worker_count; i++) {
 			//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
 			debug_log_i("SEND: Data: %d", *((int *)buf));
-			int status = PMPI_Send(buf, count, datatype, (job_list[dest].rank_list)[i], tag, comm);
+			int mpi_status = PMPI_Send(buf, count, datatype, (job_list[dest].rank_list)[i], tag, comm);
 			
-			if(status != MPI_SUCCESS) {
+			if(mpi_status != MPI_SUCCESS) {
 				debug_log_i("MPI_Send Failed [Dest: %d]", (job_list[dest].rank_list)[i]);
 			}
 			else {
@@ -269,29 +276,29 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 			}
 		}
 	}*/
+
+	return MPI_SUCCESS;
 }
 
 int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status) {
 	debug_log_i("In MPI_Recv()");
 	is_file_update_set();
 
-	int sender = 0;
-	int mpi_status;
+	//int sender = 0;
+	/*int mpi_status;
 
-	while(sender < job_list[source].worker_count) {
+	mpi_status = PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm, status);
+	debug_log_i("RECV: Data: %d", *((int *)buf));
 
-		mpi_status = PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[sender], tag, comm, status);
-		debug_log_i("RECV: Data: %d", *((int *)buf));
-
-		if(mpi_status != MPI_SUCCESS) {
-			debug_log_i("MPI_Recv Failed [Dest: %d]", (job_list[source].rank_list)[0]);
-			sender++;
-		}
-		else {
-			debug_log_i("MPI_Recv Success [Dest: %d]", (job_list[source].rank_list)[0]);
-			break;
-		}
+	if(mpi_status != MPI_SUCCESS) {
+		debug_log_i("MPI_Recv Failed [Dest: %d]", (job_list[source].rank_list)[0]);
+		//sender++;
 	}
+	else {
+		debug_log_i("MPI_Recv Success [Dest: %d]", (job_list[source].rank_list)[0]);
+	}*/
+
+	return MPI_SUCCESS;
 }
 
 int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
@@ -427,7 +434,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 					flag = 0;
 				}
 				// To perform agree on flag
-				PMPIX_Comm_agree(comm_to_use, &flag);
+				PMPIX_Comm_agree(comm_to_use, &flag);	// TODO: Is this call even required?
 
 				debug_log_i("[Value flag]: %d", flag);
 				if(!flag) {

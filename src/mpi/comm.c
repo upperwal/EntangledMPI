@@ -8,13 +8,14 @@ extern enum CkptBackup ckpt_backup;
 extern MPI_Errhandler ulfm_err_handler;
 
 int init_node(char *file_name, Job **job_list, Node *node) {
-	debug_log_i("Initiating Node and Jobs data from file.");
 	
 	int my_rank;
 	PMPI_Comm_rank((*node).rep_mpi_comm_world, &my_rank);
 
 	// Remember to update this rank after migration.
 	(*node).rank = my_rank;
+
+	debug_log_i("Initiating Node and Jobs data from file.");
 
 	// If job_id = -1 not set, as "node" is a global variable and is cleared by default
 	// job id 0 in the map file will not be initiated properly.
@@ -28,9 +29,9 @@ int init_node(char *file_name, Job **job_list, Node *node) {
 	// So a correction has to be made.
 	(*node).node_transit_state = NODE_DATA_NONE;
 
-	for(int i=0; i<(*node).jobs_count; i++) {
+	/*for(int i=0; i<(*node).jobs_count; i++) {
 		debug_log_i("[Node Init] My Job ID: %d | Node Transit: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d", (*node).job_id, (*node).node_transit_state, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1]);
-	}
+	}*/
 }
 
 int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup *ckpt_backup) {

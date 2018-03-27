@@ -8,15 +8,17 @@
 
 int initSeg = 80;
 
-extern Node node;
+// adding Node node here will result in node variable defined in MPI user's address space
+// and not in libreplication address space.
+//extern Node node;
 
 void f4(int *a) {
 
 	sleep(10);
 	MPI_Send(a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 
-	if(node.rank == 1)
-		exit(EXIT_FAILURE);
+	/*if(node.rank == 1)
+		exit(EXIT_FAILURE);*/
 
 	sleep(10);
 	MPI_Send(a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
@@ -79,8 +81,8 @@ int main(int argc, char** argv){
 
 	printf("[USER CODE] Rank Address: %p\n", &rank);
 
-	/*if(rank == 1)
-		readProcMapFile();*/
+	//if(rank == 1)
+	//readProcMapFile();
 
 	if(rank == 0) {
 		rep_malloc(&a, sizeof(int));
@@ -131,6 +133,7 @@ int main(int argc, char** argv){
 	printf("[Stack Seg] Rank: %d | [Users program] Value: %d | address: %p\n", rank, oo, &oo);
 	printf("[Send recv Data] Rank: %d | [Users program] Value: %d\n", rank, sendRecvData);
 	
+	//printf("**************Node Rank: %d\n", node.rank);
 	if(rank == 0) {
 		if(*a == 43)
 			printf("[Heap Seg] Rank: %d | SUCCESS\n", rank);

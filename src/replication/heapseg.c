@@ -185,6 +185,7 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 		}
 
 		heap_start = (address)malloc(total_malloc_allocation_size);
+		debug_log_i("heap_start address: %p", heap_start);
 	}
 
 	debug_log_i("Is Head NULL: %d", head == NULL);
@@ -240,7 +241,12 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 			heap_start = *ptr;
 		}
 		
+		debug_log_i("Before bcast transfer_heap_seg");
+		int *u = heap_start;
+		*u = 9;
+		debug_log_i("Assigned value to heap_start: Value: %p | %d | %p", (void *)heap_start, container.size, &job_comm);
 		PMPI_Bcast((void *)heap_start, container.size, MPI_BYTE, 0, job_comm);
+		debug_log_i("After bcast transfer_heap_seg");
 
 		address *ii = (address *)heap_start;
 		debug_log_i("Heap Sent Data: %d | Container Address: %p", *ii, container.container_address);
