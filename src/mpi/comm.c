@@ -138,6 +138,7 @@ void update_comms() {
 		color = MPI_UNDEFINED;
 	}
 
+	debug_log_i("UPDATE_COMM:- node.rep_mpi_comm_world add: %p | node.active_comm add: %p | node add: %p", &(node.rep_mpi_comm_world), &(node.active_comm), &node);
 	PMPI_Comm_split(node.rep_mpi_comm_world, color, rank_key, &(node.active_comm));
 	//PMPI_Comm_set_errhandler(node.active_comm, ulfm_err_handler);
 

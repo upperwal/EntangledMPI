@@ -172,5 +172,7 @@ int main(int argc, char** argv){
 			printf("[Send recv Data] Rank: %d | FAIL\n", rank);
 	}
 
-	MPI_Finalize();
+	printf("***Before Finalize\n");
+	//MPI_Finalize();
+	printf("******END of User Program\n");
 }

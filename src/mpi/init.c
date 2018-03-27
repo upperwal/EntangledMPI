@@ -85,8 +85,8 @@ void *rep_thread_init(void *_stackHigherAddress) {
 				else {
 				
 					// Checkpoint creation
-					/*if(node.node_checkpoint_master == YES)
-						init_ckpt(ckpt_file);*/
+					if(node.node_checkpoint_master == YES)
+						init_ckpt(ckpt_file);
 
 					// Replica creation
 					if(rep_flag)
@@ -265,12 +265,18 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 		}
 	}*/
 
+	MPI_Comm comm_to_use;
+
+	if(comm == MPI_COMM_WORLD) {
+		comm_to_use = node.rep_mpi_comm_world;
+	}
+
 	// Not fault tolerant
-	/*if(node.node_checkpoint_master == YES) {
+	if(node.node_checkpoint_master == YES) {
 		for(int i=0; i<job_list[dest].worker_count; i++) {
 			//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
 			debug_log_i("SEND: Data: %d", *((int *)buf));
-			int mpi_status = PMPI_Send(buf, count, datatype, (job_list[dest].rank_list)[i], tag, comm);
+			int mpi_status = PMPI_Send(buf, count, datatype, (job_list[dest].rank_list)[i], tag, comm_to_use);
 			
 			if(mpi_status != MPI_SUCCESS) {
 				debug_log_i("MPI_Send Failed [Dest: %d]", (job_list[dest].rank_list)[i]);
@@ -279,7 +285,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 				debug_log_i("MPI_Send Success [Dest: %d]", (job_list[dest].rank_list)[i]);
 			}
 		}
-	}*/
+	}
 
 	return MPI_SUCCESS;
 }
@@ -289,9 +295,14 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 	is_file_update_set();
 
 	//int sender = 0;
-	/*int mpi_status;
+	int mpi_status;
+	MPI_Comm comm_to_use;
 
-	mpi_status = PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm, status);
+	if(comm == MPI_COMM_WORLD) {
+		comm_to_use = node.rep_mpi_comm_world;
+	}
+
+	mpi_status = PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm_to_use, status);
 	debug_log_i("RECV: Data: %d", *((int *)buf));
 
 	if(mpi_status != MPI_SUCCESS) {
@@ -300,7 +311,7 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 	}
 	else {
 		debug_log_i("MPI_Recv Success [Dest: %d]", (job_list[source].rank_list)[0]);
-	}*/
+	}
 
 	return MPI_SUCCESS;
 }
