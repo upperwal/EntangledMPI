@@ -1,5 +1,9 @@
 #include <mpi.h>
+
+#ifdef OPEN_MPI
 #include <mpi-ext.h>
+#endif
+
 #include <assert.h>
 
 #include "src/shared.h"
