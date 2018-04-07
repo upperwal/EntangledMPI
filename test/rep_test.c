@@ -48,6 +48,10 @@ int main(int argc, char** argv){
 	int *a, *b;
 	char *c;
 
+	int bkpt = 0;
+	/*while(0 == bkpt)
+		sleep(5);*/
+
 	MPI_Init(&argc, &argv);
 
 	MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);

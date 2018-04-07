@@ -302,6 +302,11 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 		comm_to_use = node.rep_mpi_comm_world;
 	}
 
+	// DEBUG
+	int rank;
+	PMPI_Comm_rank(comm_to_use, &rank);
+	debug_log_i("This rank: %d", rank);
+	
 	mpi_status = PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm_to_use, status);
 	debug_log_i("RECV: Data: %d", *((int *)buf));
 

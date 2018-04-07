@@ -1,3 +1,13 @@
-bin_PROGRAMS += hello
-hello_SOURCES = src/manager/main.c src/replication/funprint.c src/replication/funprint.h
-hello_LDADD = libreplication.la
+bin_PROGRAMS += manager
+# = src/manager/main.c
+
+manager: src/manager/manager.go
+	@echo 'Compiling Manager'
+	$(GOC) -o $@ $<
+
+#manager_SOURCES = src/manager/manager.go
+
+
+
+
+

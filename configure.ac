@@ -3,7 +3,7 @@
 AC_PREREQ([2.68])
 AC_INIT([empi], [0.1], [a.upperwal@gmail.com])
 AC_CONFIG_AUX_DIR([build_aux])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
+AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
 
 # prevent setting xFLAGS to default of -g -O2
 # https://ubuntuforums.org/showthread.php?t=1556520
@@ -14,13 +14,21 @@ if test x"$CXXFLAGS" = x""; then
   AC_SUBST(CXXFLAGS, [ ])
 fi
 
-AM_PROG_CC_C_O
+AC_CONFIG_MACRO_DIRS([m4])
+
+AC_PROG_CC
 
 AM_PROG_AR
+
+
+AC_PROG_GO
+
 LT_INIT
+LT_LANG([C])
+LT_LANG([Go])
 
 
-AC_CONFIG_MACRO_DIRS([m4])
+
 
 AC_CONFIG_SRCDIR([src/manager/main.c])
 #AC_CONFIG_HEADERS([config.h])
@@ -40,7 +48,7 @@ fi
 # Checks for programs.
 #CC=${CC-/usr/bin/mpicc}
 AC_ARG_VAR([CC],[the 'diff' program to use for test output comparison])
-AC_PATH_PROG([CC], [mpicc], [cc], [/usr/bin])
+AC_PATH_PROG([CC], [mpicc], [cc], [])
 #AC_PROG_CC(MPICC)
 #AX_MPI
 
@@ -55,6 +63,8 @@ AC_PATH_PROG([CC], [mpicc], [cc], [/usr/bin])
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h])
+
+
 
 # Checks for typedefs, structures, and compiler characteristics.
 
