@@ -101,7 +101,6 @@ int init_rep(MPI_Comm job_comm) {
 	// Init Heap Segment
 	PMPI_Barrier(job_comm);
 	transfer_heap_seg(job_comm);
-	
 
 	log_i("Replication Complete.");
 }

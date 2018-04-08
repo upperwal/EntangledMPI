@@ -14,4 +14,8 @@ int parse_map_file(char *, Job **, Node *, enum CkptBackup *);
 
 int create_migration_comm(MPI_Comm *, int *, enum CkptBackup *);
 
+void update_comms();
+
+void print_job_list();
+
 #endif

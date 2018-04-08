@@ -1,32 +1,37 @@
 #include "comm.h"
 
 extern Node node;
+extern Job *job_list;
 
 extern enum CkptBackup ckpt_backup;
 
+extern MPI_Errhandler ulfm_err_handler;
+
 int init_node(char *file_name, Job **job_list, Node *node) {
-	debug_log_i("Initiating Node and Jobs data from file.");
 	
 	int my_rank;
-	PMPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+	PMPI_Comm_rank((*node).rep_mpi_comm_world, &my_rank);
 
 	// Remember to update this rank after migration.
 	(*node).rank = my_rank;
+
+	debug_log_i("Initiating Node and Jobs data from file.");
 
 	// If job_id = -1 not set, as "node" is a global variable and is cleared by default
 	// job id 0 in the map file will not be initiated properly.
 	(*node).job_id = -1;
 
 	parse_map_file(file_name, job_list, node, &ckpt_backup);
+	update_comms();
 
 	// parse_map_file will set "node_transit_state" to "NODE_DATA_RECEIVER"
 	// because it thinks all nodes are newly added to this job.
 	// So a correction has to be made.
 	(*node).node_transit_state = NODE_DATA_NONE;
 
-	for(int i=0; i<(*node).jobs_count; i++) {
+	/*for(int i=0; i<(*node).jobs_count; i++) {
 		debug_log_i("[Node Init] My Job ID: %d | Node Transit: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d", (*node).job_id, (*node).node_transit_state, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1]);
-	}
+	}*/
 }
 
 int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup *ckpt_backup) {
@@ -117,6 +122,51 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 	}
 }
 
+// responsible to update 'world_job_comm' and 'active_comm' [defined in src/shared.h]
+// 'world_job_comm': Communicator all all nodes in a job.
+// 'active_comm': Communicator of nodes, one from each job. So these can be called active nodes.
+void update_comms() {
+	int color = 0, rank_key = node.job_id;
+
+	// Although misguiding 'node.node_checkpoint_master' is not just used to mark a node
+	// which takes checkpoint on behalf of a job but it is also used to do communications
+	// amoung other jobs. Then the result is send to all nodes of 'this' job.
+	
+	// 'node.node_checkpoint_master == NO' are the nodes not responsible for checkpointing
+	// in this job.
+	if(node.node_checkpoint_master == NO) {
+		color = MPI_UNDEFINED;
+	}
+
+	debug_log_i("UPDATE_COMM:- node.rep_mpi_comm_world add: %p | node.active_comm add: %p | node add: %p", &(node.rep_mpi_comm_world), &(node.active_comm), &node);
+	PMPI_Comm_split(node.rep_mpi_comm_world, color, rank_key, &(node.active_comm));
+	//PMPI_Comm_set_errhandler(node.active_comm, ulfm_err_handler);
+
+	// Test
+	int rank;
+
+	if(node.active_comm != MPI_COMM_NULL) {
+		PMPI_Comm_rank(node.active_comm, &rank);
+		debug_log_i("Job ID: %d | active_comm Rank: %d", node.job_id, rank);
+	}
+	
+
+	color = node.job_id;
+	if(node.node_checkpoint_master == YES) {
+		rank_key = 0;
+	}
+	else {
+		rank_key = 1;
+	}
+
+	PMPI_Comm_split(node.rep_mpi_comm_world, color, rank_key, &(node.world_job_comm));
+	//PMPI_Comm_set_errhandler(node.world_job_comm, ulfm_err_handler);
+
+	// Test
+	PMPI_Comm_rank(node.world_job_comm, &rank);
+	debug_log_i("Job ID: %d | world_job_comm Rank: %d", node.job_id, rank);
+}
+
 /* Returns 1 if comm is valid on this node, else 0. */
 int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ckpt_backup) {
 	/* 								this^
@@ -151,9 +201,18 @@ int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ck
 
 	debug_log_i("Color: %d | key: %d | job_comm: %p", color, key, job_comm);
 
-	PMPI_Comm_split(MPI_COMM_WORLD, color, key, job_comm);
+	PMPI_Comm_split(node.rep_mpi_comm_world, color, key, job_comm);
 
 	debug_log_i("Create Migration Comm: flag: %d | ckpt master: %d", flag, node.node_checkpoint_master);
 	
 	return (flag || node.node_checkpoint_master);
+}
+
+// TODO: Print only workers which are assigned.
+void print_job_list() {
+	for(int i=0; i<node.jobs_count; i++) {
+		
+		debug_log_i("MyJobId: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d | Checkpoint: %d", node.job_id, job_list[i].job_id, job_list[i].worker_count, job_list[i].rank_list[0], job_list[i].rank_list[1], node.node_checkpoint_master);
+
+	}
 }

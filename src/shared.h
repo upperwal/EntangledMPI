@@ -2,6 +2,7 @@
 #include <setjmp.h>
 #include <pthread.h>
 #include <assert.h>
+#include <mpi.h>
 
 #ifndef __SHARED_H__
 #define __SHARED_H__
@@ -45,6 +46,9 @@ typedef struct Nodes {
 	int jobs_count;
 	enum NodeTransitState node_transit_state;
 	enum NodeCheckpointMaster node_checkpoint_master;
+	MPI_Comm rep_mpi_comm_world; 	// Duplicate of MPI_COMM_WORLD
+	MPI_Comm world_job_comm; 		// Communicator to all nodes in a job.
+	MPI_Comm active_comm;			// Communicator of nodes, one from each job. So these can be called active nodes.
 } Node;
 
 typedef struct Jobs {

@@ -14,3 +14,5 @@ mpiexec -n 3 xterm -e gdb /home/mpiuser/entangledmpi/build_turing/reptest
 
 1. *** longjmp causes uninitialized stack frame ***
 	https://bugs.python.org/issue12468
+2. Node node goes in MPI user address space
+	When "extern Node node" is defined in user's program (rep_test.c etc). During linking node variable will be created in user's global memory and not in libreplication virtual memory space.

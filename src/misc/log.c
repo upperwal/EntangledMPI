@@ -20,4 +20,5 @@ void _log_i(const char *module, const int line, const char *message, ...) {
 	va_start(args, buffer);
 	vfprintf(stdout, buffer, args);
 	va_end(args);
+	
 }

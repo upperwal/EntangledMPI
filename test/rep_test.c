@@ -8,12 +8,17 @@
 
 int initSeg = 80;
 
-extern Node node;
+// adding Node node here will result in node variable defined in MPI user's address space
+// and not in libreplication address space.
+//extern Node node;
 
 void f4(int *a) {
 
 	sleep(10);
 	MPI_Send(a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+
+	/*if(node.rank == 1)
+		exit(EXIT_FAILURE);*/
 
 	sleep(10);
 	MPI_Send(a, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
@@ -43,6 +48,10 @@ int main(int argc, char** argv){
 	int *a, *b;
 	char *c;
 
+	int bkpt = 0;
+	/*while(0 == bkpt)
+		sleep(5);*/
+
 	MPI_Init(&argc, &argv);
 
 	MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
@@ -54,14 +63,30 @@ int main(int argc, char** argv){
 	printf("Process ID: %d\n", pid);
 
 	/*if(node.rank == 1)
-		kill(pid, SIGBUS);*/
+		exit(EXIT_FAILURE);
+
+	MPI_Comm new_comm;
+	int sc = MPIX_Comm_shrink(node.world_job_comm, &new_comm);
+
+	if(sc != MPI_SUCCESS) {
+		char str[500];
+		int len;
+		MPI_Error_string(sc, str, &len);
+		printf("Rank: %d | Shrink not success | Message: %s\n", node.rank, str);
+	}
+
+	int rk, sz;
+	PMPI_Comm_size(new_comm, &sz);
+	PMPI_Comm_rank(new_comm, &rk);
+
+	printf("Rank: %d | After Shrink | Rank: %d | Size: %d\n", node.rank, rk, sz);*/
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	printf("[USER CODE] Rank Address: %p\n", &rank);
 
-	/*if(rank == 1)
-		readProcMapFile();*/
+	//if(rank == 1)
+	//readProcMapFile();
 
 	if(rank == 0) {
 		rep_malloc(&a, sizeof(int));
@@ -112,6 +137,7 @@ int main(int argc, char** argv){
 	printf("[Stack Seg] Rank: %d | [Users program] Value: %d | address: %p\n", rank, oo, &oo);
 	printf("[Send recv Data] Rank: %d | [Users program] Value: %d\n", rank, sendRecvData);
 	
+	//printf("**************Node Rank: %d\n", node.rank);
 	if(rank == 0) {
 		if(*a == 43)
 			printf("[Heap Seg] Rank: %d | SUCCESS\n", rank);
@@ -150,5 +176,7 @@ int main(int argc, char** argv){
 			printf("[Send recv Data] Rank: %d | FAIL\n", rank);
 	}
 
-	MPI_Finalize();
+	printf("***Before Finalize\n");
+	//MPI_Finalize();
+	printf("******END of User Program\n");
 }
