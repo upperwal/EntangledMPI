@@ -33,6 +33,7 @@ install:
   - bash ci/travis/install_mpi.sh
   - export PATH=$TRAVIS_BUILD_DIR/openmpi/bin:$PATH
   - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/openmpi/lib:$LD_LIBRARY_PATH
+  - echo $PATH
 
 before_script:
   - ./autogen.sh
@@ -43,4 +44,4 @@ before_script:
 # build instructions
 script:
   - ../configure --disable-stack-protector
-  - make -j 4 CC=TRAVIS_BUILD_DIR/openmpi/bin/mpicc
+  - make -j 4 CC=mpicc
