@@ -28,6 +28,6 @@ else
 	make install &> openmpi.install
 	cd ..
     fi
-    test -n $CC && unset CC
-    test -n $CXX && unset CXX
+    #test -n $CC && unset CC
+    #test -n $CXX && unset CXX
 fi
