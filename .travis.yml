@@ -24,9 +24,9 @@ cache:
     - openmpi-3.0.1
 
 # upgrade packages
-before_install:
-  - test -n $CC && unset CC
-  - test -n $CXX && unset CXX
+#before_install:
+#  - test -n $CC && unset CC
+#  - test -n $CXX && unset CXX
 
 # install mpi
 install:
