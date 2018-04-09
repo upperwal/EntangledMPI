@@ -24,11 +24,11 @@ else
 	echo "Configuring and building MPICH"
 	cd mpich-3.2.1
 	./configure --prefix=$TRAVIS_BUILD_DIR/mpich --disable-fortran &> mpich.configure
-	cat mpich.configure
+	#cat mpich.configure
 	make -j4 &> mpich.make
-	cat mpich.make
+	#cat mpich.make
 	make install &> mpich.install
-	locate mpicc
+	#locate mpicc
 	cd ..
     fi
     #test -n $CC && unset CC

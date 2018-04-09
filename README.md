@@ -1,3 +1,7 @@
+Fault Tolerance Framework for High Performance Computing
+
+[![Build Status](https://travis-ci.org/upperwal/EntangledMPI.svg?branch=master)](https://travis-ci.org/upperwal/EntangledMPI)
+
 **IMPORTANT NOTE**
 This framework will only run if the program is compiled dynamically i.e. using "-dynamic" flag, with stack protection disabled i.e. using "-fno-stack-protector" flag and disabled [ASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization) (Address space layout randomization) using "sudo sysctl kernel.randomize_va_space=0" to disable ASLR only for your session.
 
