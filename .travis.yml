@@ -12,11 +12,14 @@ compiler:
 addons:
     # For Linux, make sure we have some extra packages that we like to
     # build with
+    sources:
+    - ubuntu-toolchain-r-test
     apt:
         packages:
             - autoconf
             - automake
             - libtool
+            - gcc-5
 
 cache:
   directories:
