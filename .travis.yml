@@ -1,0 +1,45 @@
+sudo: required
+
+language: c
+
+services: docker
+
+os:
+  - linux
+compiler:
+  - gcc
+
+addons:
+    # For Linux, make sure we have some extra packages that we like to
+    # build with
+    apt:
+        packages:
+            - autoconf
+            - automake
+            - libtool
+
+cache:
+  directories:
+    - openmpi
+    - openmpi-3.0.1
+
+# upgrade packages
+before_install:
+  - test -n $CC && unset CC
+  - test -n $CXX && unset CXX
+  - which $CXX_COMPILER
+
+# install mpi
+install:
+  - bash ci/travis/install_mpi.sh
+
+before_script:
+  - mkdir build
+  - cd build
+
+
+# build instructions
+script:
+  - ../configure --disable-stack-protector CC=mpicc
+  - make -j 4
+  - make install
