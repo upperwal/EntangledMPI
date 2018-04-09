@@ -23,7 +23,7 @@ else
 	tar zxf openmpi-3.0.1.tar.gz
 	echo "Configuring and building OpenMPI"
 	cd openmpi-3.0.1
-	./configure --prefix=$TRAVIS_BUILD_DIR/openmpi CC=$C_COMPILER CXX=$CXX_COMPILER &> openmpi.configure
+	#./configure --prefix=$TRAVIS_BUILD_DIR/openmpi CC=$C_COMPILER CXX=$CXX_COMPILER &> openmpi.configure
 	make -j4 &> openmpi.make
 	make install &> openmpi.install
 	cd ..
