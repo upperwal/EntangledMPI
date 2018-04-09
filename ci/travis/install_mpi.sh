@@ -1,31 +1,31 @@
 #!/bin/bash
 
 if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-    cd openmpi
+    cd mpich
     if [ -f "bin/mpirun" ]; then
-	echo "Using cached OpenMPI"
+	echo "Using cached MPICH"
     else
-	echo "Installing OpenMPI with homebrew"
-        brew install open-mpi
+	echo "Installing MPICH with homebrew"
+        brew install mpich
 	ln -s /usr/local/bin bin
 	ln -s /usr/local/lib lib
 	ln -s /usr/local/include include
     fi
 else
-    if [ -f "openmpi/bin/mpirun" ] && [ -f "openmpi-3.0.1/config.log" ]; then
-	echo "Using cached OpenMPI"
-	echo "Configuring OpenMPI"
-	cd openmpi-3.0.1
-	./configure --prefix=$TRAVIS_BUILD_DIR/openmpi CC=$C_COMPILER CXX=$CXX_COMPILER &> openmpi.configure
+    if [ -f "mpich/bin/mpirun" ] && [ -f "mpich-3.2.1/config.log" ]; then
+	echo "Using cached MPICH"
+	echo "Configuring MPICH"
+	cd mpich-3.2.1
+	./configure --prefix=$TRAVIS_BUILD_DIR/mpich CC=$C_COMPILER CXX=$CXX_COMPILER &> mpich.configure
     else
-	echo "Downloading OpenMPI Source"
-	wget https://www.open-mpi.org/software/ompi/v3.0/downloads/openmpi-3.0.1.tar.gz
-	tar zxf openmpi-3.0.1.tar.gz
-	echo "Configuring and building OpenMPI"
-	cd openmpi-3.0.1
-	#./configure --prefix=$TRAVIS_BUILD_DIR/openmpi CC=$C_COMPILER CXX=$CXX_COMPILER &> openmpi.configure
-	make -j4 &> openmpi.make
-	make install &> openmpi.install
+	echo "Downloading MPICH Source"
+	wget http://www.mpich.org/static/downloads/3.2.1/mpich-3.2.1.tar.gz
+	tar zxf mpich-3.2.1.tar.gz
+	echo "Configuring and building MPICH"
+	cd mpich-3.2.1
+	./configure --prefix=$TRAVIS_BUILD_DIR/mpich CC=$C_COMPILER CXX=$CXX_COMPILER &> mpich.configure
+	make -j4 &> mpich.make
+	make install &> mpich.install
 	cd ..
     fi
     #test -n $CC && unset CC

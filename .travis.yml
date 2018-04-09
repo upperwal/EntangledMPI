@@ -23,20 +23,20 @@ addons:
 
 cache:
   directories:
-    - openmpi
-    - openmpi-3.0.1
+    - mpich
+    - mpich-3.2.1
 
 # upgrade packages
-#before_install:
+before_install:
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 1
 #  - test -n $CC && unset CC
 #  - test -n $CXX && unset CXX
 
 # install mpi
 install:
   - bash ci/travis/install_mpi.sh
-  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 1
-  - export PATH=$TRAVIS_BUILD_DIR/openmpi/bin:$PATH
-  - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/openmpi/lib:$LD_LIBRARY_PATH
+  - export PATH=$TRAVIS_BUILD_DIR/mpich/bin:$PATH
+  - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/mpich/lib:$TRAVIS_BUILD_DIR/mpich/lib64:$LD_LIBRARY_PATH
   - echo $PATH
 
 before_script:
