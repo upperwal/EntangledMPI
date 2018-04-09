@@ -2,8 +2,6 @@ sudo: required
 
 language: c
 
-services: docker
-
 os:
   - linux
 compiler:
@@ -35,6 +33,7 @@ before_install:
 # install mpi
 install:
   - bash ci/travis/install_mpi.sh
+  - ls $TRAVIS_BUILD_DIR/mpich/
   - export PATH=$TRAVIS_BUILD_DIR/mpich/bin:$PATH
   - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/mpich/lib:$TRAVIS_BUILD_DIR/mpich/lib64:$LD_LIBRARY_PATH
   - echo $PATH
