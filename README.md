@@ -1,4 +1,4 @@
-Fault Tolerance Framework for High Performance Computing
+### Fault Tolerance Framework for High Performance Computing
 
 [![Build Status](https://travis-ci.org/upperwal/EntangledMPI.svg?branch=master)](https://travis-ci.org/upperwal/EntangledMPI)
 

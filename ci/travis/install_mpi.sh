@@ -17,6 +17,8 @@ else
 	echo "Configuring MPICH"
 	cd mpich-3.2.1
 	./configure --prefix=$TRAVIS_BUILD_DIR/mpich &> mpich.configure
+	cat mpich.configure
+	cd ..
     else
 	echo "Downloading MPICH Source"
 	wget http://www.mpich.org/static/downloads/3.2.1/mpich-3.2.1.tar.gz
