@@ -26,6 +26,7 @@ else
 	./configure --prefix=$TRAVIS_BUILD_DIR/mpich CC=$C_COMPILER CXX=$CXX_COMPILER &> mpich.configure
 	make -j4 &> mpich.make
 	make install &> mpich.install
+	locate mpicc
 	cd ..
     fi
     #test -n $CC && unset CC
