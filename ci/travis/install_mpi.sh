@@ -25,6 +25,7 @@ else
 	cd mpich-3.2.1
 	./configure --prefix=$TRAVIS_BUILD_DIR/mpich CC=$C_COMPILER CXX=$CXX_COMPILER &> mpich.configure
 	make -j4 &> mpich.make
+	cat mpich.make
 	make install &> mpich.install
 	locate mpicc
 	cd ..
