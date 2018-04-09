@@ -40,6 +40,6 @@ before_script:
 
 # build instructions
 script:
-  - ../configure --disable-stack-protector CC=mpicc
-  - make -j 4
+  - ../configure --disable-stack-protector
+  - make -j 4 CC=mpicc
   - make install
