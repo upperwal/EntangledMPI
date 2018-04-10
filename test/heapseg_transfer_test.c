@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
 	if(rank == 0) {
 		rep_malloc(&a, sizeof(int));
 		*a = 20;
-		assign_malloc_context(&a, &b);		// For "b = a" case, no new memory is allocated.
+		rep_assign_malloc_context(&a, &b);		// For "b = a" case, no new memory is allocated.
 		rep_malloc(&r, sizeof(char));
 		*r = 'p';
 	}
