@@ -43,7 +43,7 @@ void rep_display();
 void rep_clear();
 void rep_clear_discontiguous();
 
-void assign_malloc_context(const void **, const void **);
+void rep_assign_malloc_context(const void **, const void **);
 
 void rep_malloc(void **, size_t);
 void rep_free(void **);

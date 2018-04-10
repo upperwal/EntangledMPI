@@ -4,7 +4,7 @@
 
 This project is a fault tolerance framework for parallel applications. Below is a list of supported features by this framework.
 
-**This framework is still in development phase and not production ready. So please use it carefully.**
+**This framework is still under development phase and not production ready. So please use it carefully.**
 
 | #        | Features           							| Status  		|
 | -------- |-------------         							| -----			|
@@ -34,12 +34,13 @@ This project is a fault tolerance framework for parallel applications. Below is 
 
 ## API
 
-MPI program are supported by default but you need to link you program using ```libreplication.so``` after installing **EntangledMPI**. 
+MPI program's are supported by default but you need to link your program using ```libreplication.so``` after installing **EntangledMPI**. 
 
-Addition to this two malloc wrappers are avalaible which should be used instead of ```malloc``` and to copy addresses from one pointer to another.
+Addition to this malloc and free wrappers are avalaible which should be used instead of ```malloc``` and ```free``` and a function to copy addresses from one pointer to another.
 
 + ```void rep_malloc(void **, size_t)``` used to allocate memory from heap.
 + ```void rep_free(void **)``` used to free memory.
++ ```void rep_assign_malloc_context(const void **, const void **)``` used to copy pointer values
 
 ### Example
 
@@ -49,8 +50,12 @@ rep_malloc(&ptr, sizeof(int));
 
 *ptr = 10;
 
+// Source -> Dest
+rep_assign_malloc_context(&ptr, &dup_ptr);
+
 rep_free(&ptr);
 ptr = NULL;
+dup_ptr = NULL;
 ```
 
 ## Building EntangledMPI
