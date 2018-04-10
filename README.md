@@ -76,16 +76,33 @@ make [-j N]
 make install
 ```
 
+## Usage
+
+This framework will need a ```"replication.map"``` file which will contain the rank mappings. Sample given below or you can use [replication.map](test/replication.map) in the test directory. This file should be placed in the directory where you will execute ```mpirun``` command.
+
+```
+3	2
+1	0	1	0
+1	1	2	2	1
+[first line: <TOTAL_CORES><TAB><NO_OF_JOBS>] 
+[followed by (in each line): <UPDATE_BIT><TAB><JOB_ID><TAB><NO_OF_WORKERS><TAB><ORIGINAL_RANK_1><TAB><ORIGINAL_RANK_2><TAB>...]
+<WORD_ID> starts with 0
+<ORIGINAL_RANK_*> starts with 0
+```
+
+### Checkpointing
+
+You need to create a directory named ```"ckpt"``` in the directory where you will execute ```mpirun``` to store checkpointing files. This will be taken care in the future by the process manager.
 
 
 ## Examples and Tutorials
 
 This framework is compatible with all MPI programs you only need to replace all your ```malloc``` calls to ```rep_malloc``` and ```free``` to ```rep_free``` and link your program with this library.
 
-You can also view the [test](test/) folder for some example MPI programs.
+You can also view the [test](test/) directory for some example MPI programs.
 
 **IMPORTANT NOTE:**
 
-This framework will only run if the program is compiled dynamically i.e. using "-dynamic" flag, with stack protection disabled i.e. using "-fno-stack-protector" flag and disabled [ASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization) (Address space layout randomization) using "sudo sysctl kernel.randomize_va_space=0" to disable ASLR only for your session.
+This framework will only run if the program is compiled dynamically i.e. using ```"-dynamic"```flag, with stack protection disabled i.e. using ```"-fno-stack-protector"``` flag and disabled [ASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization) ```(Address space layout randomization)``` using ```"sudo sysctl kernel.randomize_va_space=0"``` to disable ASLR temporarily.
 
 [Stackoverflow help](https://askubuntu.com/questions/318315/how-can-i-temporarily-disable-aslr-address-space-layout-randomization)
