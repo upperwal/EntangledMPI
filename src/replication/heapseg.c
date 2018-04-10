@@ -102,7 +102,7 @@ void rep_clear_discontiguous() {
 	debug_log_i("Clearing Malloc List End");
 }
 
-void assign_malloc_context(const void **source, const void **dest) {
+void rep_assign_malloc_context(const void **source, const void **dest) {
 	Malloc_container cont;
 	cont.container_address = (address)dest;
 	cont.linked_address = (address)source;

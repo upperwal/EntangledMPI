@@ -7,6 +7,10 @@ os:
 compiler:
   - gcc
 
+branches:
+  only: 
+    - master
+
 addons:
     # For Linux, make sure we have some extra packages that we like to
     # build with
