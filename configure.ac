@@ -28,8 +28,6 @@ LT_LANG([C])
 LT_LANG([Go])
 
 
-
-
 AC_CONFIG_SRCDIR([src/manager/main.c])
 #AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
@@ -63,8 +61,6 @@ AC_PATH_PROG([CC], [mpicc], [cc], [])
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h])
-
-
 
 # Checks for typedefs, structures, and compiler characteristics.
 

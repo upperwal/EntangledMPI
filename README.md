@@ -76,6 +76,8 @@ make [-j N]
 make install
 ```
 
+**Note:** ```$GOPATH``` should be set to ```'<ROOT>/EntangledMPI'```
+
 ## Usage
 
 This framework will need a ```"replication.map"``` file which will contain the rank mappings. Sample given below or you can use [replication.map](test/replication.map) in the test directory. This file should be placed in the directory where you will execute ```mpirun``` command.
@@ -86,7 +88,7 @@ This framework will need a ```"replication.map"``` file which will contain the r
 1	1	2	2	1
 [first line: <TOTAL_CORES><TAB><NO_OF_JOBS>] 
 [followed by (in each line): <UPDATE_BIT><TAB><JOB_ID><TAB><NO_OF_WORKERS><TAB><ORIGINAL_RANK_1><TAB><ORIGINAL_RANK_2><TAB>...]
-<WORD_ID> starts with 0
+<JOB_ID> starts with 0
 <ORIGINAL_RANK_*> starts with 0
 ```
 

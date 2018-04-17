@@ -10,6 +10,7 @@
 #include "src/shared.h"
 #include "src/replication/rep.h"
 #include "src/misc/file.h"
+#include "src/misc/network.h"
 #include "src/mpi/comm.h"
 #include "src/checkpoint/full_context.h"
 #include "src/mpi/ulfm.h"
@@ -29,6 +30,7 @@ Node node;
 
 char *map_file = "./replication.map";
 char *ckpt_file = "./ckpt/rank-%d.ckpt";
+char *network_stat_file = "./network.stat";
 
 // Restore from checkpoint files: YES | Do not restore: NO
 enum CkptBackup ckpt_backup;
@@ -158,6 +160,9 @@ int MPI_Init(int *argc, char ***argv) {
 	if(ckpt_bit) {
 		ckpt_backup = BACKUP_YES;
 	}
+
+	// Save hostname of this host for process manager and fault injector.
+	network_stat_init(network_stat_file);
 
 	pthread_t tid;
 	pthread_create(&tid, NULL, rep_thread_init, stackStart);
