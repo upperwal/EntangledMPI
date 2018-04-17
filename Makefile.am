@@ -1,5 +1,7 @@
 AM_CFLAGS = $(REP_CFLAGS) -O0 -fpic
 
+export GOPATH = @abs_srcdir@
+
 bin_PROGRAMS =
 lib_LTLIBRARIES =
 
