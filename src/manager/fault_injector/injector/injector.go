@@ -75,7 +75,7 @@ func NewInjector(networkMapFile string) (Injector, error) {
 }
 
 func (i Injector) Start(list []*selector.QueuedProcesses) {
-	fmt.Println("Starting Fault Injection...")
+	fmt.Println("\nStarting Fault Injection...\n")
 
 	for _, p := range list {
 		time.Sleep(p.WaitInterval)
@@ -97,14 +97,20 @@ func (i Injector) kill(p *NetworkMap) {
 
 	fmt.Println("Killing: ", rank, pid, host)
 	
-	killCommand := fmt.Sprintf("'kill -9 %d'", pid)
-	pidofCMD := exec.Command("ssh", "-t", host, killCommand)
+	killCommand := fmt.Sprintf("kill -9 %d", pid)
+	pidofCMD := exec.Command("ssh", host, killCommand)
 	var out bytes.Buffer
 	pidofCMD.Stdout = &out
 	if err := pidofCMD.Run(); err != nil {
-		panic(err)
+		if err.Error() == "exit status 1" {
+			fmt.Println("Kill Error: PID", pid, "not running.")
+		} else {
+			fmt.Println("Error while killing a process")
+		}
+		os.Exit(1)
 	} else {
-		fmt.Println("OUTPUT: ", out)
+		o, _ := out.ReadString('\n')
+		fmt.Printf("KILLED: Rank: %d | OUTPUT: %s\n", rank, o)
 		
 		/*for i, p := range pid {
 			proc := rand.Intn(len(pid))
