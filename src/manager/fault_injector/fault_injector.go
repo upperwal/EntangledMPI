@@ -48,6 +48,7 @@ func main() {
 	for i, p := range a {
 		fmt.Printf("%d: Wait Interval: %fs Rank: %d\n",i, p.WaitInterval.Seconds(), p.Rank)
 	}
+	fmt.Println()
 
 	inject, _ := injector.NewInjector(*networkMapFileName)
 	inject.Start(a)
