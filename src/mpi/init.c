@@ -722,7 +722,7 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 		}
 
 		if(node.active_comm != MPI_COMM_NULL) {
-			mpi_status = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, node.active_comm);
+			mpi_status = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, node.active_comm);
 		}
 
 		flag = (MPI_SUCCESS == mpi_status);
