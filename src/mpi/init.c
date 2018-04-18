@@ -535,7 +535,9 @@ int MPI_Bcast(void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
 		}
 
 		debug_log_i("Starting bcast: Comm: %p | node.rep_comm: %p | Comm to use: %p", comm, node.rep_mpi_comm_world, comm_to_use);
-		mpi_status = PMPI_Bcast(buffer, count, datatype, 0, comm_to_use);
+		
+		int root_rank = job_list[root].rank_list[0];
+		mpi_status = PMPI_Bcast(buffer, count, datatype, root_rank, comm_to_use);
 		debug_log_i("bcast done");
 
 
