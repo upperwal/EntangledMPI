@@ -174,6 +174,11 @@ int MPI_Init(int *argc, char ***argv) {
 	PMPI_Barrier(node.rep_mpi_comm_world);
 }
 
+int MPI_Finalize(void) {
+
+	return PMPI_Finalize();
+}
+
 int MPI_Comm_rank(MPI_Comm comm, int *rank) {
 	*rank = node.job_id;
 }

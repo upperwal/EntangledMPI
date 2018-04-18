@@ -177,6 +177,6 @@ int main(int argc, char** argv){
 	}
 
 	printf("***Before Finalize\n");
-	//MPI_Finalize();
+	MPI_Finalize();
 	printf("******END of User Program\n");
 }
