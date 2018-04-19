@@ -3,7 +3,7 @@
 #include "src/replication/rep.h"
 
 #define SMALL_BUF_SIZE 5000
-#define SLEEP_TIME 2
+#define SLEEP_TIME 1
 
 float *big_buffer;
 float *small_buffer;
@@ -16,6 +16,8 @@ void assign_data(float *buf, int size) {
 }
 
 int main(int argc, char **argv) {
+	printf("%d\n", getpid());
+	//sleep(20);
 	MPI_Init(&argc, &argv);
 
 	int rank, size;
@@ -24,6 +26,8 @@ int main(int argc, char **argv) {
 
 	MPI_Comm_size(comm, &size);
 	MPI_Comm_rank(comm, &rank);
+
+	//sleep(10);
 
 	if(size < 10) {
 		printf("COMM_WORLD size should be >= 10\n");
