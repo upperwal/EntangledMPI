@@ -41,7 +41,8 @@ enum CkptBackup { BACKUP_NO, BACKUP_YES };
 */
 typedef struct Nodes {
 	int job_id;
-	int rank;
+	int rank; 			// Changed on Comm Shrink
+	int static_rank;	// Persistant Rank. Won't change (Used in record keeping)
 	int age;
 	int jobs_count;
 	enum NodeTransitState node_transit_state;
