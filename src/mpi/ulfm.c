@@ -7,6 +7,8 @@ MPI_Group last_group_failed;	// This is the group of nodes which failed recently
 MPI_Group previous_world_group;
 
 void update_job_list(int size, int *translated_ranks) {
+	node.node_checkpoint_master = NO;
+
 	for(int i=0; i<node.jobs_count; i++) {
 		
 		int overwrite_pointer = 0;
@@ -25,18 +27,18 @@ void update_job_list(int size, int *translated_ranks) {
 				}
 			}
 			else {
-				if(overwrite_pointer == 0) {
-					node.node_checkpoint_master = YES;
-				}
-				else {
-					node.node_checkpoint_master = NO;
-				}
-				
 				(job_list[i].rank_list)[overwrite_pointer++] = translated_ranks[rank];
 			}
 		
 		}
 	}
+
+	node.rank = translated_ranks[node.rank];
+
+	if((job_list[node.job_id].rank_list)[0] == node.rank) {
+		node.node_checkpoint_master = YES;
+	}
+	debug_log_i("update job Checkpoint MASTER: %d", node.node_checkpoint_master == YES);
 }
 
 void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
@@ -95,7 +97,9 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
 		print_job_list();
 
 		PMPI_Comm_free(&(node.rep_mpi_comm_world));
-		node.rep_mpi_comm_world = world_shrinked;
+		PMPI_Comm_dup(world_shrinked, &(node.rep_mpi_comm_world));
+		PMPI_Comm_free(&world_shrinked);
+		//node.rep_mpi_comm_world = world_shrinked;
 
 		if(node.active_comm != MPI_COMM_NULL) {
 			PMPI_Comm_free(&(node.active_comm));
