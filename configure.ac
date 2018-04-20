@@ -28,7 +28,7 @@ LT_LANG([C])
 LT_LANG([Go])
 
 
-AC_CONFIG_SRCDIR([src/manager/main.c])
+AC_CONFIG_SRCDIR([src/replication/rep.c])
 #AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
 
