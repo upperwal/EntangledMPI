@@ -400,7 +400,6 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 		if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
 			flag = 0;
-			sleep(1);
 			continue;
 		}
 		// To perform agree on flag
@@ -409,7 +408,6 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 		if(!flag) {
 			debug_log_i("MPI_Scatter Failed");
 			flag = 0;
-			sleep(1);
 			continue;
 		}
 		else {
@@ -472,7 +470,6 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 	
 
 	do {
-		//sleep(4);
 
 		total_trails++;
 
