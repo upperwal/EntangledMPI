@@ -81,4 +81,4 @@ ulfm_test_CFLAGS = $(AM_CFLAGS)
 rep_collective_test_LDADD = libreplication.la
 rep_collective_test_SOURCES = test/rep_collective_test.c
 rep_collective_test_LDFLAGS = -no-install
-rep_collective_test_CFLAGS = $(AM_CFLAGS)
+rep_collective_test_CFLAGS = -g $(AM_CFLAGS)
