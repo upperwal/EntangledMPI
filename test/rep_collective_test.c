@@ -3,11 +3,15 @@
 #include "src/replication/rep.h"
 
 #define SMALL_BUF_SIZE 5000
-#define SLEEP_TIME 1
+#define SLEEP_TIME 2
 
 float *big_buffer;
 float *small_buffer;
 float *reduce_result;
+
+// Move this to header file
+extern int __pass_sender_cont_add;
+extern int __pass_receiver_cont_add;
 
 void assign_data(float *buf, int size) {
 	for(int i = 0; i < size; i++) {
@@ -16,7 +20,8 @@ void assign_data(float *buf, int size) {
 }
 
 int main(int argc, char **argv) {
-	printf("%d\n", getpid());
+	int ***n = argv;
+	printf("Add: %p\n", &argc);
 	//sleep(20);
 	MPI_Init(&argc, &argv);
 
@@ -42,69 +47,73 @@ int main(int argc, char **argv) {
 	assign_data(small_buffer, SMALL_BUF_SIZE);
 
 	// BCAST STARTS
-	MPI_Bcast(big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 0, comm);
+	__pass_sender_cont_add = 1;
+
+	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 0, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Bcast(big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 1, comm);
+	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 1, comm);
 	sleep(SLEEP_TIME);
 	
-	MPI_Bcast(big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 2, comm);
+	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 2, comm);
 	sleep(SLEEP_TIME);
 	
-	MPI_Bcast(big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 3, comm);
+	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 3, comm);
 	sleep(SLEEP_TIME);
 	// BCAST ENDS
 
 
-
+	__pass_receiver_cont_add = 1;
 	// SCATTER STARTS
-	MPI_Scatter(big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 0, comm);
+	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 0, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Scatter(big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 3, comm);
+	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 3, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Scatter(big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 8, comm);
+	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 8, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Scatter(big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 5, comm);
+	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 5, comm);
 	sleep(SLEEP_TIME);
 	// SCATTER ENDS
 
 
 
 	// GATHER STARTS
-	MPI_Gather(small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 8, comm);
+	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 8, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Gather(small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 3, comm);
+	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 3, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Gather(small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 2, comm);
+	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 2, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Gather(small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 9, comm);
+	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 9, comm);
 	sleep(SLEEP_TIME);
 	// GATHER ENDS
 
 
 
 	// ALLGATHER STARTS
-	MPI_Allgather(small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, comm);
+	MPI_Allgather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Allgather(small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, comm);
+	MPI_Allgather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Allgather(small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, comm);
+	MPI_Allgather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Allgather(small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, comm);
+	MPI_Allgather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, comm);
 	sleep(SLEEP_TIME);
 	// ALLGATHER ENDS
 
 
 	float r_s = 1, r_r;
+	__pass_sender_cont_add = 0;
+	__pass_receiver_cont_add = 0;
 	// REDUCE STARTS
 	MPI_Reduce(&r_s, &r_r, 1, MPI_FLOAT, MPI_MAX, 5, comm);
 	sleep(SLEEP_TIME);
@@ -120,18 +129,19 @@ int main(int argc, char **argv) {
 	// REDUCE ENDS
 
 
-
+	__pass_sender_cont_add = 1;
+	__pass_receiver_cont_add = 1;
 	// ALL REDUCE STARTS
-	MPI_Allreduce(big_buffer, reduce_result, SMALL_BUF_SIZE * size, MPI_FLOAT, MPI_MIN, comm);
+	MPI_Allreduce(&big_buffer, &reduce_result, SMALL_BUF_SIZE * size, MPI_FLOAT, MPI_MIN, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Allreduce(big_buffer, reduce_result, SMALL_BUF_SIZE * size, MPI_FLOAT, MPI_MAX, comm);
+	MPI_Allreduce(&big_buffer, &reduce_result, SMALL_BUF_SIZE * size, MPI_FLOAT, MPI_MAX, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Allreduce(big_buffer, reduce_result, SMALL_BUF_SIZE * size, MPI_FLOAT, MPI_PROD, comm);
+	MPI_Allreduce(&big_buffer, &reduce_result, SMALL_BUF_SIZE * size, MPI_FLOAT, MPI_PROD, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Allreduce(big_buffer, reduce_result, SMALL_BUF_SIZE * size, MPI_FLOAT, MPI_MAX, comm);
+	MPI_Allreduce(&big_buffer, &reduce_result, SMALL_BUF_SIZE * size, MPI_FLOAT, MPI_MAX, comm);
 	sleep(SLEEP_TIME);
 	// ALL REDUCE ENDS
 
@@ -142,5 +152,5 @@ int main(int argc, char **argv) {
 
 	MPI_Finalize();
 
-	printf("*****DONE\n");
+	printf("*****DONE %d\n", rank);
 }

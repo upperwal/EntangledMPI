@@ -17,6 +17,9 @@
 
 #define REP_THREAD_SLEEP_TIME 3
 #define NO_TRIALS 10
+#define DEFINE_BUFFER(_buf, buf) void **_buf = buf;
+#define SET_RIGHT_S_BUFFER(_buffer) __pass_sender_cont_add ? *_buffer : _buffer
+#define SET_RIGHT_R_BUFFER(_buffer) __pass_receiver_cont_add ? *_buffer : _buffer
 
 jmp_buf context;
 address stackHigherAddress, stackLowerAddress;
@@ -40,6 +43,14 @@ enum CkptBackup ckpt_backup;
 MPI_Comm job_comm;
 
 MPI_Errhandler ulfm_err_handler;
+
+// Non zero when container address is passed to MPI_* functions.
+// When pointers are passed to functions by value (addresses returned by malloc). 
+// These pointer values are pushed to the stack during function execution.
+// During stack replication or checkpointing, these address are send
+// to the corresponding node where these addresses are invalid.
+int __pass_sender_cont_add;
+int __pass_receiver_cont_add;
 
 extern Malloc_list *head;
 
@@ -163,7 +174,7 @@ int MPI_Init(int *argc, char ***argv) {
 	
 	pthread_mutex_lock(&global_mutex);
 
-	debug_log_i("Address Stack new: %p", stackStart);
+	debug_log_i("Address Stack new: %p | argv add: %p", stackStart, argv);
 
 	ckpt_bit = does_ckpt_file_exists(ckpt_file);
 
@@ -293,10 +304,11 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 
 	// Not fault tolerant
 	if(node.node_checkpoint_master == YES) {
+		DEFINE_BUFFER(buffer, buf);
 		for(int i=0; i<job_list[dest].worker_count; i++) {
 			//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
 			debug_log_i("SEND: Data: %d", *((int *)buf));
-			int mpi_status = PMPI_Send(buf, count, datatype, (job_list[dest].rank_list)[i], tag, comm_to_use);
+			int mpi_status = PMPI_Send(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, comm_to_use);
 			
 			if(mpi_status != MPI_SUCCESS) {
 				debug_log_i("MPI_Send Failed [Dest: %d]", (job_list[dest].rank_list)[i]);
@@ -327,7 +339,8 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 	PMPI_Comm_rank(comm_to_use, &rank);
 	debug_log_i("This rank: %d", rank);
 	
-	mpi_status = PMPI_Recv(buf, count, datatype, (job_list[source].rank_list)[0], tag, comm_to_use, status);
+	DEFINE_BUFFER(buffer, buf);
+	mpi_status = PMPI_Recv(SET_RIGHT_R_BUFFER(buffer), count, datatype, (job_list[source].rank_list)[0], tag, comm_to_use, status);
 	debug_log_i("RECV: Data: %d", *((int *)buf));
 
 	if(mpi_status != MPI_SUCCESS) {
@@ -350,7 +363,8 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 
 	is_file_update_set();
 
-	
+	DEFINE_BUFFER(sbuffer, sendbuf);
+	DEFINE_BUFFER(rbuffer, recvbuf);
 
 	do {
 
@@ -375,7 +389,9 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 			int ll;
 			PMPI_Comm_size(node.active_comm, &ll);
 			debug_log_i("node.active_comm Size: %d", ll);
-			mpi_status = PMPI_Scatter(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, node.active_comm);	
+
+			debug_log_i("RIGHT BUFFER: %d", SET_RIGHT_S_BUFFER(sbuffer), SET_RIGHT_R_BUFFER(rbuffer));
+			mpi_status = PMPI_Scatter(SET_RIGHT_S_BUFFER(sbuffer), sendcount, sendtype, SET_RIGHT_R_BUFFER(rbuffer), recvcount, recvtype, root, node.active_comm);	
 		}
 
 		flag = (MPI_SUCCESS == mpi_status);
@@ -404,7 +420,9 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 			do {
 
 				debug_log_i("Doing Bcast");
-				mpi_status = PMPI_Bcast(recvbuf, recvcount, recvtype, 0, node.world_job_comm);
+
+				
+				mpi_status = PMPI_Bcast(SET_RIGHT_R_BUFFER(rbuffer), recvcount, recvtype, 0, node.world_job_comm);
 				debug_log_i("Aftter bcast: MPI_Status: %d", mpi_status == MPI_SUCCESS);
 				flag = (MPI_SUCCESS == mpi_status);
 				
@@ -449,6 +467,8 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 
 	is_file_update_set();
 
+	DEFINE_BUFFER(sbuffer, sendbuf);
+	DEFINE_BUFFER(rbuffer, recvbuf);
 	
 
 	do {
@@ -466,7 +486,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 		}
 
 		if(node.active_comm != MPI_COMM_NULL) {
-			mpi_status = PMPI_Gather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, node.active_comm);
+			mpi_status = PMPI_Gather(SET_RIGHT_S_BUFFER(sbuffer), sendcount, sendtype, SET_RIGHT_R_BUFFER(rbuffer), recvcount, recvtype, root, node.active_comm);
 		}
 
 		flag = (MPI_SUCCESS == mpi_status);
@@ -493,7 +513,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 			do {
 
 				debug_log_i("Doing Bcast");
-				mpi_status = PMPI_Bcast(recvbuf, recvcount * node.jobs_count, recvtype, 0, node.world_job_comm);
+				mpi_status = PMPI_Bcast(SET_RIGHT_R_BUFFER(rbuffer), recvcount * node.jobs_count, recvtype, 0, node.world_job_comm);
 				debug_log_i("Aftter bcast: MPI_Status: %d", mpi_status == MPI_SUCCESS);
 				flag = (MPI_SUCCESS == mpi_status);
 				
@@ -559,7 +579,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
     
 }
 
-int MPI_Bcast(void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
+int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
 
 	int mpi_status = MPI_SUCCESS;
 	int flag;
@@ -567,6 +587,9 @@ int MPI_Bcast(void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
 	MPI_Comm *comm_to_use;
 
 	is_file_update_set();
+
+	// Hack to pass pointers
+	DEFINE_BUFFER(buffer, buf);
 
 	do {
 		total_trails++;
@@ -583,7 +606,9 @@ int MPI_Bcast(void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm
 		debug_log_i("Starting bcast: Comm: %p | node.rep_comm: %p | Comm to use: %p", comm, node.rep_mpi_comm_world, *comm_to_use);
 		
 		int root_rank = job_list[root].rank_list[0];
-		mpi_status = PMPI_Bcast(buffer, count, datatype, root_rank, *comm_to_use);
+
+		
+		mpi_status = PMPI_Bcast(SET_RIGHT_S_BUFFER(buffer), count, datatype, root_rank, *comm_to_use);
 		
 
 		flag = (MPI_SUCCESS == mpi_status);
@@ -647,6 +672,9 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 
 	is_file_update_set();
 
+	DEFINE_BUFFER(sbuffer, sendbuf);
+	DEFINE_BUFFER(rbuffer, recvbuf);
+
 	do {
 
 		total_trails++;
@@ -661,7 +689,7 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 		}
 
 		if(node.active_comm != MPI_COMM_NULL) {
-			mpi_status = PMPI_Allgather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, node.active_comm);
+			mpi_status = PMPI_Allgather(SET_RIGHT_S_BUFFER(sbuffer), sendcount, sendtype, SET_RIGHT_R_BUFFER(rbuffer), recvcount, recvtype, node.active_comm);
 		}
 
 		flag = (MPI_SUCCESS == mpi_status);
@@ -688,7 +716,7 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 			do {
 
 				debug_log_i("Doing Bcast");
-				mpi_status = PMPI_Bcast(recvbuf, recvcount * node.jobs_count, recvtype, 0, node.world_job_comm);
+				mpi_status = PMPI_Bcast(SET_RIGHT_R_BUFFER(rbuffer), recvcount * node.jobs_count, recvtype, 0, node.world_job_comm);
 				debug_log_i("Aftter bcast: MPI_Status: %d", mpi_status == MPI_SUCCESS);
 				flag = (MPI_SUCCESS == mpi_status);
 				
@@ -771,6 +799,9 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 
 	is_file_update_set();
 
+	DEFINE_BUFFER(sbuffer, sendbuf);
+	DEFINE_BUFFER(rbuffer, recvbuf);
+
 	do {
 
 		total_trails++;
@@ -785,7 +816,7 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 		}
 
 		if(node.active_comm != MPI_COMM_NULL) {
-			mpi_status = PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, node.active_comm);
+			mpi_status = PMPI_Reduce(SET_RIGHT_S_BUFFER(sbuffer), SET_RIGHT_R_BUFFER(rbuffer), count, datatype, op, root, node.active_comm);
 		}
 
 		flag = (MPI_SUCCESS == mpi_status);
@@ -812,7 +843,7 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 			do {
 				if(node.job_id == root) {
 					debug_log_i("Doing Bcast");
-					mpi_status = PMPI_Bcast(recvbuf, count, datatype, 0, node.world_job_comm);
+					mpi_status = PMPI_Bcast(SET_RIGHT_R_BUFFER(rbuffer), count, datatype, 0, node.world_job_comm);
 					debug_log_i("Aftter bcast: MPI_Status: %d", mpi_status == MPI_SUCCESS);
 				}
 				else {
@@ -879,6 +910,9 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 
 	is_file_update_set();
 
+	DEFINE_BUFFER(sbuffer, sendbuf);
+	DEFINE_BUFFER(rbuffer, recvbuf);
+
 	do {
 
 		total_trails++;
@@ -893,7 +927,7 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 		}
 
 		if(node.active_comm != MPI_COMM_NULL) {
-			mpi_status = PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, node.active_comm);
+			mpi_status = PMPI_Allreduce(SET_RIGHT_S_BUFFER(sbuffer), SET_RIGHT_R_BUFFER(rbuffer), count, datatype, op, node.active_comm);
 		}
 
 		flag = (MPI_SUCCESS == mpi_status);
@@ -920,7 +954,7 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 			do {
 
 				debug_log_i("Doing Bcast");
-				mpi_status = PMPI_Bcast(recvbuf, count, datatype, 0, node.world_job_comm);
+				mpi_status = PMPI_Bcast(SET_RIGHT_R_BUFFER(rbuffer), count, datatype, 0, node.world_job_comm);
 				debug_log_i("Aftter bcast: MPI_Status: %d", mpi_status == MPI_SUCCESS);
 				flag = (MPI_SUCCESS == mpi_status);
 				
