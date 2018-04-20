@@ -13,7 +13,8 @@ int init_node(char *file_name, Job **job_list, Node *node) {
 	PMPI_Comm_rank((*node).rep_mpi_comm_world, &my_rank);
 
 	// Remember to update this rank after migration.
-	(*node).rank = my_rank;
+	(*node).rank = my_rank; 			
+	(*node).static_rank = my_rank;		// This won't change
 
 	debug_log_i("Initiating Node and Jobs data from file.");
 
@@ -165,6 +166,7 @@ void update_comms() {
 	// Test
 	PMPI_Comm_rank(node.world_job_comm, &rank);
 	debug_log_i("Job ID: %d | world_job_comm Rank: %d", node.job_id, rank);
+	debug_log_i("Checkpoint MASTER: %d", node.node_checkpoint_master == YES);
 }
 
 /* Returns 1 if comm is valid on this node, else 0. */

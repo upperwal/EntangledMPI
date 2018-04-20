@@ -11,7 +11,7 @@ This project is a fault tolerance framework for parallel applications. Below is 
 | 1		   | ULFM Enabled									| master (OK)	|
 | 2        | Process Replication 							| master (OK) 	|
 | 3        | Full-context Application Level Checkpointing  	| master (OK) 	|
-| 4		   | Fault Injector									| wip 			|
+| 4		   | Fault Injector									| master (OK) 	|
 | 5	 	   | Process Manager 								| wip 			|
 | 6        | User Level Checkpointing      					| future 		|
 
@@ -20,17 +20,18 @@ This project is a fault tolerance framework for parallel applications. Below is 
 | #        	| MPI Function           						| Status  		|
 | -------- 	|-------------         							| -----			|
 | 1 		| ```MPI_Init``` 								| master (OK) 	|
-| 2 		| ```MPI_Comm_rank``` 							| master (OK) 	|
-| 3 		| ```MPI_Comm_size``` 							| master (OK) 	|
-| 4 		| ```MPI_Send``` 								| master (OK) 	|
-| 5 		| ```MPI_Recv``` 								| master (OK) 	|
-| 6 		| ```MPI_Scatter``` 							| master (OK) 	|
-| 7 		| ```MPI_Gather``` 								| master (OK) 	|
-| 8 		| ```MPI_Bcast``` 								| master (OK) 	|
-| 9 		| ```MPI_Allgather``` 							| master (OK) 	|
-| 10 		| ```MPI_Reduce``` 								| master (OK) 	|
-| 11 		| ```MPI_Allreduce``` 							| master (OK) 	|
-| 12 		| ```MPI_*``` (Async calls) 					| wip 		 	|
+| 2 		| ```MPI_Finalize``` 							| master (OK) 	|
+| 3 		| ```MPI_Comm_rank``` 							| master (OK) 	|
+| 4 		| ```MPI_Comm_size``` 							| master (OK) 	|
+| 5 		| ```MPI_Send``` 								| master (OK) 	|
+| 6 		| ```MPI_Recv``` 								| master (OK) 	|
+| 7 		| ```MPI_Scatter``` 							| master (OK) 	|
+| 8 		| ```MPI_Gather``` 								| master (OK) 	|
+| 9 		| ```MPI_Bcast``` 								| master (OK) 	|
+| 10 		| ```MPI_Allgather``` 							| master (OK) 	|
+| 11 		| ```MPI_Reduce``` 								| master (OK) 	|
+| 12 		| ```MPI_Allreduce``` 							| master (OK) 	|
+| 13 		| ```MPI_*``` (Async calls) 					| wip 		 	|
 
 ## API
 

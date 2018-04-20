@@ -10,7 +10,8 @@ noinst_PROGRAMS = 	rep_test 				\
 					allgather_test 			\
 					reduce_test 			\
 					allreduce_test 			\
-					ulfm_test
+					ulfm_test 				\
+					rep_collective_test
 
 rep_test_LDADD = libreplication.la 
 rep_test_SOURCES = test/rep_test.c
@@ -76,3 +77,8 @@ ulfm_test_LDADD = libreplication.la
 ulfm_test_SOURCES = test/ulfm_test.c
 ulfm_test_LDFLAGS = -no-install
 ulfm_test_CFLAGS = $(AM_CFLAGS)
+
+rep_collective_test_LDADD = libreplication.la
+rep_collective_test_SOURCES = test/rep_collective_test.c
+rep_collective_test_LDFLAGS = -no-install
+rep_collective_test_CFLAGS = -g $(AM_CFLAGS)

@@ -145,7 +145,7 @@ func (s Selector) getNew() (*QueuedProcesses, error)  {
 		interval, _ := s.Dist.Next()
 		s.RankQueued[randomRank] = true
 
-		intervalDur := time.Duration(interval)
+		intervalDur := time.Duration(1 / interval)
 
 		return &QueuedProcesses{randomRank, time.Second * intervalDur}, nil
 	}
