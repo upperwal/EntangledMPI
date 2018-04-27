@@ -153,6 +153,7 @@ int MPI_Init(int *argc, char ***argv) {
 	debug_log_i("WORLD_COMM Dup: %p", node.rep_mpi_comm_world);
 
 	address stackStart;
+	address temp_stackStart;
 
 	// Getting RBP only works if optimisation level is zero (O0).
 	// O1 removes RBP's use.
@@ -165,6 +166,13 @@ int MPI_Init(int *argc, char ***argv) {
 	}*/
 
 	stackStart = *argv;
+
+	PMPI_Allreduce(&stackStart, &temp_stackStart, sizeof(address), MPI_BYTE, MPI_BOR, node.rep_mpi_comm_world);
+
+	if(stackStart != temp_stackStart) {
+		PMPI_Abort(node.rep_mpi_comm_world, 100);
+		exit(2);
+	}
 
 	// Lock global mutex. This mutex will always be locked when user program is executing.
 	pthread_mutex_init(&global_mutex, NULL);
