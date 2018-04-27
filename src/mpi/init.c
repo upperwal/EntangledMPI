@@ -54,6 +54,16 @@ int __pass_receiver_cont_add;
 
 extern Malloc_list *head;
 
+void __attribute__((constructor)) calledFirst(void)
+{	
+	int a;
+    printf("\nI am called first %p : %d \n", &a, getpid());
+    int hang = 1;
+	/*while(hang) {
+		sleep(2);
+	}*/
+}
+
 void *rep_thread_init(void *_stackHigherAddress) {
 	 	// Higher end address (stack grows higher to lower address)
 	stackHigherAddress = (address *)_stackHigherAddress;
