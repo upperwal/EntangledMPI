@@ -33,7 +33,7 @@ Job *job_list;
 Node node;
 
 char *map_file = "./replication.map";
-char *ckpt_file = "./ckpt/rank-%d.ckpt";
+#define ckpt_file "./ckpt/rank-%d.ckpt"
 char *network_stat_file = "./network.stat";
 
 // Restore from checkpoint files: YES | Do not restore: NO
@@ -131,8 +131,6 @@ int MPI_Init(int *argc, char ***argv) {
 	}*/
 
 	PMPI_Init(argc, argv);
-
-
 
 	PMPI_Comm_create_errhandler(rep_errhandler, &ulfm_err_handler);
 	//PMPI_Comm_set_errhandler(MPI_COMM_WORLD, ulfm_err_handler);
@@ -296,10 +294,10 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 		}
 	}*/
 
-	MPI_Comm comm_to_use;
+	MPI_Comm *comm_to_use;
 
 	if(comm == MPI_COMM_WORLD) {
-		comm_to_use = node.rep_mpi_comm_world;
+		comm_to_use = &(node.rep_mpi_comm_world);
 	}
 
 	// Not fault tolerant
@@ -308,7 +306,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 		for(int i=0; i<job_list[dest].worker_count; i++) {
 			//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
 			debug_log_i("SEND: Data: %d", *((int *)buf));
-			int mpi_status = PMPI_Send(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, comm_to_use);
+			int mpi_status = PMPI_Send(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, *comm_to_use);
 			
 			if(mpi_status != MPI_SUCCESS) {
 				debug_log_i("MPI_Send Failed [Dest: %d]", (job_list[dest].rank_list)[i]);
@@ -328,19 +326,19 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 
 	//int sender = 0;
 	int mpi_status;
-	MPI_Comm comm_to_use;
+	MPI_Comm *comm_to_use;
 
 	if(comm == MPI_COMM_WORLD) {
-		comm_to_use = node.rep_mpi_comm_world;
+		comm_to_use = &(node.rep_mpi_comm_world);
 	}
 
 	// DEBUG
 	int rank;
-	PMPI_Comm_rank(comm_to_use, &rank);
+	PMPI_Comm_rank(*comm_to_use, &rank);
 	debug_log_i("This rank: %d", rank);
 	
 	DEFINE_BUFFER(buffer, buf);
-	mpi_status = PMPI_Recv(SET_RIGHT_R_BUFFER(buffer), count, datatype, (job_list[source].rank_list)[0], tag, comm_to_use, status);
+	mpi_status = PMPI_Recv(SET_RIGHT_R_BUFFER(buffer), count, datatype, (job_list[source].rank_list)[0], tag, *comm_to_use, status);
 	debug_log_i("RECV: Data: %d", *((int *)buf));
 
 	if(mpi_status != MPI_SUCCESS) {
@@ -359,7 +357,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 	int mpi_status = MPI_SUCCESS;
 	int flag;
 	int total_trails = 0;
-	MPI_Comm comm_to_use;
+	MPI_Comm *comm_to_use;
 
 	is_file_update_set();
 
@@ -378,11 +376,11 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 		}
 
 		if(comm == MPI_COMM_WORLD) {
-			comm_to_use = node.rep_mpi_comm_world;
+			comm_to_use = &(node.rep_mpi_comm_world);
 		}
 
 		int pp;
-		PMPI_Comm_rank(comm_to_use, &pp);
+		PMPI_Comm_rank(*comm_to_use, &pp);
 		debug_log_i("Comm_to_use rank: %d", pp);
 
 		if(node.active_comm != MPI_COMM_NULL) {
@@ -397,13 +395,13 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 		flag = (MPI_SUCCESS == mpi_status);
 
 		// To correct the comms
-		if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+		if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
 			flag = 0;
 			continue;
 		}
 		// To perform agree on flag
-		PMPIX_Comm_agree(comm_to_use, &flag);
+		//PMPIX_Comm_agree(comm_to_use, &flag);
 
 		if(!flag) {
 			debug_log_i("MPI_Scatter Failed");
@@ -425,11 +423,11 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 				flag = (MPI_SUCCESS == mpi_status);
 				
 				// To correct the comms
-				if(MPI_SUCCESS != PMPIX_Comm_agree(comm_to_use, &flag)) {
+				if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
 					flag = 0;
 				}
 				// To perform agree on flag
-				PMPIX_Comm_agree(comm_to_use, &flag);
+				//PMPIX_Comm_agree(comm_to_use, &flag);
 
 				debug_log_i("[Value flag]: %d", flag);
 				if(!flag) {
