@@ -12,8 +12,9 @@ This project is a fault tolerance framework for parallel applications. Below is 
 | 2        | Process Replication 							| master (OK) 	|
 | 3        | Full-context Application Level Checkpointing  	| master (OK) 	|
 | 4		   | Fault Injector									| master (OK) 	|
-| 5	 	   | Process Manager 								| wip 			|
-| 6        | User Level Checkpointing      					| future 		|
+| 5	 	   | Process Manager 								| master (OK) 	|
+| 6	 	   | Custom Compiler (around mpicc) 				| wip 			|
+| 7        | User Level Checkpointing      					| future 		|
 
 ## MPI Functions Supported
 
@@ -31,7 +32,7 @@ This project is a fault tolerance framework for parallel applications. Below is 
 | 10 		| ```MPI_Allgather``` 							| master (OK) 	|
 | 11 		| ```MPI_Reduce``` 								| master (OK) 	|
 | 12 		| ```MPI_Allreduce``` 							| master (OK) 	|
-| 13 		| ```MPI_*``` (Async calls) 					| wip 		 	|
+| 13 		| ```MPI_*``` (Async calls) 					| future 		 	|
 
 ## API
 
