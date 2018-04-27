@@ -146,6 +146,8 @@ void rep_free(void **cont_add) {
 	// Empty linkedlist
 	while(temp != NULL) {
 		if((temp->container).container_address == cont_add) {
+			int *tt = (temp->container).allocated_address;
+			debug_log_i("Allocated Address: %p | %d", (temp->container).allocated_address, *tt);
 			free((temp->container).allocated_address);
 			rep_remove(temp);
 			break;
@@ -184,8 +186,9 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 			rep_clear_discontiguous();
 		}
 
-		heap_start = (address)malloc(total_malloc_allocation_size);
-		debug_log_i("heap_start address: %p", heap_start);
+		// This was resulting in double free or corruption after replication was calling rep_free.
+		/*heap_start = (address)malloc(total_malloc_allocation_size);
+		debug_log_i("heap_start address: %p", heap_start);*/
 	}
 
 	debug_log_i("Is Head NULL: %d", head == NULL);
@@ -239,6 +242,8 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 		if(rank == 0) {
 			address *ptr = container.container_address;
 			heap_start = *ptr;
+		} else {
+			heap_start = (address)malloc(container.size);
 		}
 		
 		debug_log_i("Before bcast transfer_heap_seg");
@@ -255,6 +260,7 @@ int transfer_heap_seg(MPI_Comm job_comm) {
 			address *ptr = container.container_address;
 
 			*ptr = heap_start;
+			container.allocated_address = *ptr;
 			debug_log_i("Added new Heap Mem: %p", heap_start);
 
 			heap_start += container.size;

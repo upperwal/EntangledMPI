@@ -1,4 +1,4 @@
-AM_CFLAGS = $(REP_CFLAGS) -O0 -fpic
+AM_CFLAGS = $(REP_CFLAGS) -g -O0 -fpic
 
 export GOPATH = @abs_srcdir@
 
