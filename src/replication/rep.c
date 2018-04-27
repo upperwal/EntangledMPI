@@ -16,6 +16,9 @@ extern Node node;
 
 extern Malloc_list *head;
 
+extern int __pass_sender_cont_add;
+extern int __pass_receiver_cont_add;
+
 /* 
 *  1. Checks for file update pointer from the replication thread.
 *  2. If set, do a setjmp(), MPI_wait_all() and switch to alternate stack.
@@ -102,7 +105,16 @@ int init_rep(MPI_Comm job_comm) {
 	PMPI_Barrier(job_comm);
 	transfer_heap_seg(job_comm);
 
+	// Send Framework related data
+	PMPI_Barrier(job_comm);
+	transfer_framework_data(job_comm);
+
 	log_i("Replication Complete.");
+}
+
+int transfer_framework_data(MPI_Comm job_comm) {
+	PMPI_Bcast(&__pass_sender_cont_add, 1, MPI_INT, 0, job_comm);
+	PMPI_Bcast(&__pass_receiver_cont_add, 1, MPI_INT, 0, job_comm);
 }
 
 void copy_jmp_buf(jmp_buf source, jmp_buf dest) {
