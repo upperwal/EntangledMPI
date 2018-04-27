@@ -51,6 +51,9 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 	int cores, jobs;
 	fscanf(pointer, "%d\t%d", &cores, &jobs);
 
+	// Reset node_checkpoint_master
+	(*node).node_checkpoint_master = NO;
+
 	// TODO: Optimise re-allocation of memory.
 	for(int i=0; i<(*node).jobs_count; i++) {
 		free((*job_list)[i].rank_list);
@@ -89,6 +92,7 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 
 			if(j == 0 && w_rank == my_rank) {
 				(*node).node_checkpoint_master = YES;
+				debug_log_i("CK MASTER: %d", (*node).node_checkpoint_master);
 			}
 
 			if(w_rank == my_rank && update_bit == 1) {
