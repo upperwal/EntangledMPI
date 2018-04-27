@@ -48,4 +48,6 @@ void copy_jmp_buf(jmp_buf, jmp_buf);
 */
 int initRep(MPI_Comm);
 
+int transfer_framework_data(MPI_Comm);
+
 #endif

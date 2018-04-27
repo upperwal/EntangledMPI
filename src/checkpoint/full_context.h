@@ -13,11 +13,13 @@ void init_ckpt(char *);
 void save_data_seg();
 void save_stack_seg();
 void save_heap_seg();
+void save_framework_data();
 
 void init_ckpt_restore(char *);
 void restore_data_seg();
 void restore_stack_seg();
 void restore_heap_seg();
+void restore_framework_data();
 
 int does_ckpt_file_exists(char *);
 

@@ -17,6 +17,9 @@ extern int malloc_number_of_allocations;
 
 extern Malloc_list *head;
 
+extern int __pass_sender_cont_add;
+extern int __pass_receiver_cont_add;
+
 void init_ckpt(char *file_name) {
 	debug_log_i("Init Ckpt");
 
@@ -29,6 +32,7 @@ void init_ckpt(char *file_name) {
 	save_data_seg();
 	save_stack_seg();
 	save_heap_seg();
+	save_framework_data();
 
 	fclose(ckpt_file);
 }
@@ -68,6 +72,8 @@ void save_stack_seg() {
 	fwrite(&processContext, sizeof(Context), 1, ckpt_file);
 	fwrite(&stack_size, sizeof(size_t), 1, ckpt_file);
 	fwrite((void *)stackLowerAddress, 1, stack_size, ckpt_file);
+
+	debug_log_i("Stack Stats: RIP: %p | RSP: %p | RBP: %p | Size: %d | LowerAdd: %p", processContext.rip, processContext.rsp, processContext.rbp, stack_size, (void *)stackLowerAddress);
 }
 
 void save_heap_seg() {
@@ -92,6 +98,11 @@ void save_heap_seg() {
 	}
 }
 
+void save_framework_data() {
+	fwrite(&__pass_sender_cont_add, sizeof(int), 1, ckpt_file);
+	fwrite(&__pass_receiver_cont_add, sizeof(int), 1, ckpt_file);
+}
+
 void init_ckpt_restore(char *file_name) {
 	log_i("Init Ckpt Restore");
 
@@ -104,6 +115,7 @@ void init_ckpt_restore(char *file_name) {
 	restore_data_seg();
 	restore_stack_seg();
 	restore_heap_seg();
+	restore_framework_data();
 
 	fclose(ckpt_file);
 }
@@ -133,6 +145,8 @@ void restore_stack_seg() {
 	stackLowerAddress = stackHigherAddress - (stack_size - 4); 
 
 	fread((void *)stackLowerAddress, 1, stack_size, ckpt_file);
+
+	debug_log_i("[Restore] Stack Stats: RIP: %p | RSP: %p | RBP: %p | Size: %d | LowerAdd: %p", processContext.rip, processContext.rsp, processContext.rbp, stack_size, (void *)stackLowerAddress);
 }
 
 void restore_heap_seg() {
@@ -154,6 +168,11 @@ void restore_heap_seg() {
 
 		rep_append(temp_container);
 	}
+}
+
+void restore_framework_data() {
+	fread(&__pass_sender_cont_add, sizeof(int), 1, ckpt_file);
+	fread(&__pass_receiver_cont_add, sizeof(int), 1, ckpt_file);
 }
 
 int does_ckpt_file_exists(char *file_name) {
