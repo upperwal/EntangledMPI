@@ -19,6 +19,10 @@ void assign_data(float *buf, int size) {
 	}
 }
 
+//void __attribute__((constructor)) calledFirst();
+
+
+
 int main(int argc, char **argv) {
 	int ***n = argv;
 	printf("Add: %p\n", &argc);
@@ -34,10 +38,10 @@ int main(int argc, char **argv) {
 
 	//sleep(10);
 
-	if(size < 10) {
+	/*if(size < 10) {
 		printf("COMM_WORLD size should be >= 10\n");
 		MPI_Abort(comm, 1);
-	}
+	}*/
 
 	rep_malloc((void **)&big_buffer, sizeof(float) * SMALL_BUF_SIZE * size);
 	rep_malloc((void **)&small_buffer, sizeof(float) * SMALL_BUF_SIZE);
@@ -49,48 +53,48 @@ int main(int argc, char **argv) {
 	// BCAST STARTS
 	__pass_sender_cont_add = 1;
 
-	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 0, comm);
+	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 0 % size, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 1, comm);
+	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 1 % size, comm);
 	sleep(SLEEP_TIME);
 	
-	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 2, comm);
+	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 2 % size, comm);
 	sleep(SLEEP_TIME);
 	
-	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 3, comm);
+	MPI_Bcast(&big_buffer, SMALL_BUF_SIZE * size, MPI_FLOAT, 3 % size, comm);
 	sleep(SLEEP_TIME);
 	// BCAST ENDS
 
 
 	__pass_receiver_cont_add = 1;
 	// SCATTER STARTS
-	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 0, comm);
+	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 0 % size, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 3, comm);
+	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 3 % size, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 8, comm);
+	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 8 % size, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 5, comm);
+	MPI_Scatter(&big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 5 % size, comm);
 	sleep(SLEEP_TIME);
 	// SCATTER ENDS
 
 
 
 	// GATHER STARTS
-	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 8, comm);
+	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 8 % size, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 3, comm);
+	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 3 % size, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 2, comm);
+	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 2 % size, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 9, comm);
+	MPI_Gather(&small_buffer, SMALL_BUF_SIZE, MPI_FLOAT, &big_buffer, SMALL_BUF_SIZE, MPI_FLOAT, 9 % size, comm);
 	sleep(SLEEP_TIME);
 	// GATHER ENDS
 
@@ -115,16 +119,16 @@ int main(int argc, char **argv) {
 	__pass_sender_cont_add = 0;
 	__pass_receiver_cont_add = 0;
 	// REDUCE STARTS
-	MPI_Reduce(&r_s, &r_r, 1, MPI_FLOAT, MPI_MAX, 5, comm);
+	MPI_Reduce(&r_s, &r_r, 1, MPI_FLOAT, MPI_MAX, 5 % size, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Reduce(&r_s, &r_r, 1, MPI_FLOAT, MPI_SUM, 2, comm);
+	MPI_Reduce(&r_s, &r_r, 1, MPI_FLOAT, MPI_SUM, 2 % size, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Reduce(&r_s, &r_r, 1, MPI_FLOAT, MPI_MIN, 8, comm);
+	MPI_Reduce(&r_s, &r_r, 1, MPI_FLOAT, MPI_MIN, 8 % size, comm);
 	sleep(SLEEP_TIME);
 
-	MPI_Reduce(&r_s, &r_r, 1, MPI_FLOAT, MPI_SUM, 7, comm);
+	MPI_Reduce(&r_s, &r_r, 1, MPI_FLOAT, MPI_SUM, 7 % size, comm);
 	sleep(SLEEP_TIME);
 	// REDUCE ENDS
 
