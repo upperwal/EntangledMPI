@@ -147,6 +147,8 @@ void restore_heap_seg() {
 		address *pointer_to_heap = (address *)temp_container.container_address;
 
 		*pointer_to_heap = malloc(temp_container.size);
+		temp_container.allocated_address = *pointer_to_heap;
+		debug_log_i("Malloc given add: %p", temp_container.allocated_address);
 
 		fread(*pointer_to_heap, temp_container.size, 1, ckpt_file);
 
