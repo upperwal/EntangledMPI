@@ -53,6 +53,7 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 
 	// Reset node_checkpoint_master
 	(*node).node_checkpoint_master = NO;
+	(*node).node_transit_state = NODE_DATA_NONE;
 
 	// TODO: Optimise re-allocation of memory.
 	for(int i=0; i<(*node).jobs_count; i++) {
@@ -73,12 +74,12 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 		assert(j_id < jobs && "Check replication map for job id > no of jobs.");
 		assert(w_c > 0 && "Worker count for each job should be greater than zero.");
 
-		if(update_bit == 0) {
+		/*if(update_bit == 0) {
 			if((*node).job_id == j_id) {
 				(*node).node_transit_state = NODE_DATA_NONE;
 			}
 			//continue;
-		}
+		}*/
 
 		(*job_list)[j_id].job_id = j_id;
 		(*job_list)[j_id].worker_count = w_c;
@@ -125,6 +126,8 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 	for(int i=0; i<jobs; i++) {
 		debug_log_i("[Rep File Update] MyJobId: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d | Checkpoint: %d", (*node).job_id, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1], (*node).node_checkpoint_master);
 	}
+
+	debug_log_i("node_transit_state: Sender: %d | Recv: %d | None: %d", (*node).node_transit_state = NODE_DATA_SENDER, (*node).node_transit_state = NODE_DATA_RECEIVER, (*node).node_transit_state = NODE_DATA_NONE);
 }
 
 // responsible to update 'world_job_comm' and 'active_comm' [defined in src/shared.h]

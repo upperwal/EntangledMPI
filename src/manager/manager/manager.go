@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"flag"
 	"time"
 	"os"
 	"strconv"
@@ -11,16 +12,36 @@ import (
 )
 
 func main() {
-	fmt.Println("Process Manager")
 
-	_jm := InitJobMap(10, 16)
+	jobs := flag.Int("j", 0, "No of jobs")
+	ranks := flag.Int("r", 0, "Total ranks spawnned")
+	choose := flag.Int("c", 0, "No of ranks to choose to replace in each iteration")
+	timeR := flag.Int("t", 15, "Time between replication map updates")
+	flag.Parse()
+
+	if *jobs == 0 || *ranks == 0 {
+		fmt.Println("Please provide no of jobs and ranks ex: 'manager -j 10 -r 14'")
+		os.Exit(1)
+	}
+
+	if *choose == 0 {
+		*choose = *ranks - *jobs
+	}
+
+	fmt.Println("\nProcess Manager (simulation) started...")
+	fmt.Println("|-----------------------------|")
+	fmt.Println("|  No. of Jobs | No of Ranks  |")
+	fmt.Printf("|  %d          | %d           |\n", *jobs, *ranks)
+	fmt.Println("|-----------------------------|\n")
+
+	_jm := InitJobMap(*jobs, *ranks)
 	//jm := _jm.JMap
 	
 	for i := 0; i < 10; i++ {
-		c := _jm.Choose(9)
+		c := _jm.Choose(*choose)
 		_jm.Assign(c)
 
-		fmt.Println(i)
+		fmt.Printf("--> %d of %d updates\n", i+1, 10)
 
 		/*for _jid, _j := range jm {
 			fmt.Println(_jid, _j.GetNumberOfRanks())
@@ -30,7 +51,8 @@ func main() {
 
 		_jm.ResetModified()
 
-		time.Sleep(20 * time.Second)
+		dur := time.Duration(*timeR) * time.Second
+		time.Sleep(dur)
 	}
 	
 }
