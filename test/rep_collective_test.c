@@ -156,5 +156,6 @@ int main(int argc, char **argv) {
 
 	MPI_Finalize();
 
+	MPI_Comm_rank(comm, &rank);
 	printf("*****DONE %d\n", rank);
 }
