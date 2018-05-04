@@ -195,6 +195,9 @@ int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ck
 	*/
 	int color, key, flag;
 
+	// TODO: Comm was getting corrupted (review this)
+	pthread_mutex_lock(&comm_use_mutex);
+
 	if(*ckpt_backup == BACKUP_YES) {
 		return 1;
 		*rep_flag = 0;
@@ -222,6 +225,8 @@ int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ck
 	debug_log_i("Color: %d | key: %d | job_comm: %p", color, key, job_comm);
 
 	PMPI_Comm_split(node.rep_mpi_comm_world, color, key, job_comm);
+
+	pthread_mutex_unlock(&comm_use_mutex);
 
 	debug_log_i("Create Migration Comm: flag: %d | ckpt master: %d", flag, node.node_checkpoint_master);
 	
