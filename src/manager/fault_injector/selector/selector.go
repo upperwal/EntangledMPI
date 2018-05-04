@@ -156,10 +156,18 @@ func (s Selector) Next() (*QueuedProcesses, error) {
 	return s.getNew()
 }
 
-func (s Selector) NextN() ([]*QueuedProcesses, error) {
+func (s Selector) NextN(n int) ([]*QueuedProcesses, error) {
 	queuedArray := make([]*QueuedProcesses, 0)
 
-	for i := 0; i < s.Intervals; i++ {
+	iter := 0
+
+	if n == 0 {
+		iter = s.Intervals
+	} else {
+		iter = n
+	}
+
+	for i := 0; i < iter; i++ {
 		q, err := s.Next()
 		if err != nil {
 			continue
