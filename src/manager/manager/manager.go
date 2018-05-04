@@ -29,10 +29,10 @@ func main() {
 	}
 
 	fmt.Println("\nProcess Manager (simulation) started...")
-	fmt.Println("|-----------------------------|")
-	fmt.Println("|  No. of Jobs | No of Ranks  |")
-	fmt.Printf("|  %d          | %d           |\n", *jobs, *ranks)
-	fmt.Println("|-----------------------------|\n")
+	fmt.Println("|-------------------------------|")
+	fmt.Println("|  No. of Jobs \t| No of Ranks  \t|")
+	fmt.Printf("|  %d    \t| %d     \t|\n", *jobs, *ranks)
+	fmt.Println("|-------------------------------|\n")
 
 	_jm := InitJobMap(*jobs, *ranks)
 	//jm := _jm.JMap
