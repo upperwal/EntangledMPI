@@ -9,6 +9,7 @@ extern enum MapStatus map_status;
 /* pthread mutex */
 extern pthread_mutex_t global_mutex;
 extern pthread_mutex_t rep_time_mutex;
+extern pthread_mutex_t comm_use_mutex;
 
 extern address stackLowerAddress;
 
@@ -82,9 +83,13 @@ int is_file_update_set() {
 
 
 		}
+
+		// comm will be used after return
+		pthread_mutex_lock(&comm_use_mutex);
 		return 1;
 	}
 	else {
+		pthread_mutex_lock(&comm_use_mutex);
 		return 0;
 	}
 

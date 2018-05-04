@@ -7,6 +7,8 @@ extern enum CkptBackup ckpt_backup;
 
 extern MPI_Errhandler ulfm_err_handler;
 
+extern pthread_mutex_t comm_use_mutex;
+
 int init_node(char *file_name, Job **job_list, Node *node) {
 	
 	int my_rank;
@@ -136,6 +138,9 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 void update_comms() {
 	int color = 0, rank_key = node.job_id;
 
+	// Explain
+	pthread_mutex_lock(&comm_use_mutex);
+
 	// Although misguiding 'node.node_checkpoint_master' is not just used to mark a node
 	// which takes checkpoint on behalf of a job but it is also used to do communications
 	// amoung other jobs. Then the result is send to all nodes of 'this' job.
@@ -170,10 +175,16 @@ void update_comms() {
 	PMPI_Comm_split(node.rep_mpi_comm_world, color, rank_key, &(node.world_job_comm));
 	//PMPI_Comm_set_errhandler(node.world_job_comm, ulfm_err_handler);
 
+	pthread_mutex_unlock(&comm_use_mutex);
+
 	// Test
 	PMPI_Comm_rank(node.world_job_comm, &rank);
 	debug_log_i("Job ID: %d | world_job_comm Rank: %d", node.job_id, rank);
 	debug_log_i("Checkpoint MASTER: %d", node.node_checkpoint_master == YES);
+}
+
+void release_comm_lock() {
+	pthread_mutex_unlock(&comm_use_mutex);
 }
 
 /* Returns 1 if comm is valid on this node, else 0. */

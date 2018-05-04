@@ -28,6 +28,7 @@ enum MapStatus map_status;
 /* pthread mutex */
 pthread_mutex_t global_mutex;
 pthread_mutex_t rep_time_mutex;
+pthread_mutex_t comm_use_mutex;
 
 Job *job_list;
 Node node;
@@ -187,6 +188,7 @@ int MPI_Init(int *argc, char ***argv) {
 	// Lock global mutex. This mutex will always be locked when user program is executing.
 	pthread_mutex_init(&global_mutex, NULL);
 	pthread_mutex_init(&rep_time_mutex, NULL);
+	pthread_mutex_init(&comm_use_mutex, NULL);
 	
 	pthread_mutex_lock(&global_mutex);
 
@@ -212,7 +214,6 @@ int MPI_Init(int *argc, char ***argv) {
 }
 
 int MPI_Finalize(void) {
-
 	return PMPI_Finalize();
 }
 
@@ -363,6 +364,8 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 		}
 	}
 
+	release_comm_lock();
+
 	return mpi_status;
 }
 
@@ -409,6 +412,8 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 			debug_log_i("MPI_Recv Success [Dest: %d]", (job_list[source].rank_list)[i]);
 		}
 	}
+
+	release_comm_lock();
 
 	return mpi_status;
 }
@@ -511,6 +516,8 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 
 	} while(!flag);
 
+	release_comm_lock();
+
 	return MPI_SUCCESS;
 }
 
@@ -601,6 +608,8 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 
 	} while(!flag);
 
+	release_comm_lock();
+
 	return MPI_SUCCESS;
 
 
@@ -687,6 +696,8 @@ int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm co
 		}
 
 	} while(!flag);
+
+	release_comm_lock();
 
 	return MPI_SUCCESS;
 
@@ -803,6 +814,8 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 		
 
 	} while(!flag);
+
+	release_comm_lock();
 
 	return MPI_SUCCESS;
 
@@ -935,6 +948,8 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 
 	} while(!flag);
 
+	release_comm_lock();
+
 	return MPI_SUCCESS;
 
 
@@ -1041,6 +1056,8 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 		
 
 	} while(!flag);
+
+	release_comm_lock();
 
 	return MPI_SUCCESS;
 
