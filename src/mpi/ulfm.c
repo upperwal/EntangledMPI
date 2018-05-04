@@ -6,6 +6,10 @@ extern Node node;
 MPI_Group last_group_failed;	// This is the group of nodes which failed recently.
 MPI_Group previous_world_group;
 
+MPI_Comm world_shrinked;
+MPI_Group group_world_dup;
+MPI_Group group_world_shrinked;
+
 void update_job_list(int size, int *translated_ranks) {
 	node.node_checkpoint_master = NO;
 
@@ -23,7 +27,7 @@ void update_job_list(int size, int *translated_ranks) {
 
 				if(job_list[i].worker_count == 0) {
 					debug_log_e("Job: %d has no living worker node.", i);
-					PMPI_Abort(node.rep_mpi_comm_world, 1);
+					PMPI_Abort(node.rep_mpi_comm_world, 200);
 				}
 			}
 			else {
@@ -55,10 +59,6 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
 	PMPI_Comm_compare(*pcomm, node.rep_mpi_comm_world, &compare_result);
 	debug_log_i("MPI_IDENT: %d | MPI_CONGRUENT: %d | MPI_SIMILAR: %d | MPI_UNEQUAL: %d", MPI_IDENT == compare_result, MPI_CONGRUENT == compare_result, MPI_SIMILAR == compare_result, MPI_UNEQUAL == compare_result);
 	if(*pcomm == node.rep_mpi_comm_world && MPIX_ERR_PROC_FAILED == eclass) {
-		MPI_Comm world_shrinked;
-
-		MPI_Group group_world_dup;
-		MPI_Group group_world_shrinked;
 
 		int *rank_arr_group_world_dup, *rank_arr_group_world_shrinked;
 		int size;
