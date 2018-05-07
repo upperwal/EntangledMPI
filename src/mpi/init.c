@@ -430,6 +430,10 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);
 
+	if(comm == MPI_COMM_WORLD) {
+		comm_to_use = &(node.rep_mpi_comm_world);
+	}
+
 	do {
 
 		mpi_status = MPI_SUCCESS;
@@ -439,10 +443,6 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 		if(total_trails >= NO_TRIALS) {
 			log_e("Total Trails exceeds. Aborting.");
 			PMPI_Abort(node.rep_mpi_comm_world, 10);
-		}
-
-		if(comm == MPI_COMM_WORLD) {
-			comm_to_use = &(node.rep_mpi_comm_world);
 		}
 
 		int pp;
@@ -461,10 +461,11 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 		flag = (MPI_SUCCESS == mpi_status);
 
 		// To correct the comms
-		if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		// why "while"? check MPI_Bcast.
+		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
-			flag = 0;
-			continue;
+			//flag = 0;
+			//continue;
 		}
 		// To perform agree on flag
 		//PMPIX_Comm_agree(comm_to_use, &flag);
@@ -489,9 +490,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 				flag = (MPI_SUCCESS == mpi_status);
 				
 				// To correct the comms
-				if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
-					flag = 0;
-				}
+				while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag));
 				// To perform agree on flag
 				//PMPIX_Comm_agree(comm_to_use, &flag);
 
@@ -534,6 +533,9 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);
 	
+	if(comm == MPI_COMM_WORLD) {
+		comm_to_use = &(node.rep_mpi_comm_world);
+	}
 
 	do {
 
@@ -544,10 +546,6 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 			PMPI_Abort(node.rep_mpi_comm_world, 10);
 		}
 
-		if(comm == MPI_COMM_WORLD) {
-			comm_to_use = &(node.rep_mpi_comm_world);
-		}
-
 		if(node.active_comm != MPI_COMM_NULL) {
 			mpi_status = PMPI_Gather(SET_RIGHT_S_BUFFER(sbuffer), sendcount, sendtype, SET_RIGHT_R_BUFFER(rbuffer), recvcount, recvtype, root, node.active_comm);
 		}
@@ -555,10 +553,10 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 		flag = (MPI_SUCCESS == mpi_status);
 
 		// To correct the comms
-		if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
-			flag = 0;
-			continue;
+			//flag = 0;
+			//continue;
 		}
 		// To perform agree on flag
 		//PMPIX_Comm_agree(comm_to_use, &flag);
@@ -581,9 +579,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 				flag = (MPI_SUCCESS == mpi_status);
 				
 				// To correct the comms
-				if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
-					flag = 0;
-				}
+				while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag));
 				// To perform agree on flag
 				//PMPIX_Comm_agree(comm_to_use, &flag);	// TODO: Is this call even required?
 
@@ -656,16 +652,16 @@ int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm co
 	// Hack to pass pointers
 	DEFINE_BUFFER(buffer, buf);
 
+	if(comm == MPI_COMM_WORLD) {
+		comm_to_use = &(node.rep_mpi_comm_world);
+	}
+
 	do {
 		total_trails++;
 
 		if(total_trails >= NO_TRIALS) {
 			log_e("Total Trails exceeds. Aborting.");
 			PMPI_Abort(node.rep_mpi_comm_world, 10);
-		}
-
-		if(comm == MPI_COMM_WORLD) {
-			comm_to_use = &(node.rep_mpi_comm_world);
 		}
 
 		debug_log_i("Starting bcast: Comm: %p | node.rep_comm: %p | Comm to use: %p", comm, node.rep_mpi_comm_world, *comm_to_use);
@@ -680,14 +676,17 @@ int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm co
 
 		debug_log_i("bcast done Success: %d", flag);
 
-		// To correct the comms
-		if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		// To correct the comms [Refer to Issue #29 on Github]
+		// while loop should only run twice:
+		//  1. To correct (shrink) the comm incase of failure
+		//  2. To agree on flag value
+		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
-			flag = 0;
-			continue;
+			//flag = 0;
+			//continue; 	// This was a bad idea
 		}
 		// To perform agree on flag
-		//PMPIX_Comm_agree(comm_to_use, &flag);
+		//PMPIX_Comm_agree(comm_to_use, &flag);  	// Initial thinking was correct
 
 		if(!flag) {
 			debug_log_i("MPI_Bcast Failed");
@@ -742,6 +741,10 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);
 
+	if(comm == MPI_COMM_WORLD) {
+		comm_to_use = &(node.rep_mpi_comm_world);
+	}
+
 	do {
 
 		total_trails++;
@@ -751,10 +754,6 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 			PMPI_Abort(node.rep_mpi_comm_world, 10);
 		}
 
-		if(comm == MPI_COMM_WORLD) {
-			comm_to_use = &(node.rep_mpi_comm_world);
-		}
-
 		if(node.active_comm != MPI_COMM_NULL) {
 			mpi_status = PMPI_Allgather(SET_RIGHT_S_BUFFER(sbuffer), sendcount, sendtype, SET_RIGHT_R_BUFFER(rbuffer), recvcount, recvtype, node.active_comm);
 		}
@@ -762,10 +761,10 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 		flag = (MPI_SUCCESS == mpi_status);
 
 		// To correct the comms
-		if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
-			flag = 0;
-			continue;
+			//flag = 0;
+			//continue;
 		}
 		// To perform agree on flag
 		//PMPIX_Comm_agree(*comm_to_use, &flag);
@@ -788,9 +787,7 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 				flag = (MPI_SUCCESS == mpi_status);
 				
 				// To correct the comms
-				if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
-					flag = 0;
-				}
+				while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag));
 				// To perform agree on flag
 				//PMPIX_Comm_agree(comm_to_use, &flag);
 
@@ -871,6 +868,10 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);
 
+	if(comm == MPI_COMM_WORLD) {
+		comm_to_use = &(node.rep_mpi_comm_world);
+	}
+
 	do {
 
 		total_trails++;
@@ -880,10 +881,6 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 			PMPI_Abort(node.rep_mpi_comm_world, 10);
 		}
 
-		if(comm == MPI_COMM_WORLD) {
-			comm_to_use = &(node.rep_mpi_comm_world);
-		}
-
 		if(node.active_comm != MPI_COMM_NULL) {
 			mpi_status = PMPI_Reduce(SET_RIGHT_S_BUFFER(sbuffer), SET_RIGHT_R_BUFFER(rbuffer), count, datatype, op, root, node.active_comm);
 		}
@@ -891,10 +888,10 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 		flag = (MPI_SUCCESS == mpi_status);
 
 		// To correct the comms
-		if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
-			flag = 0;
-			continue;
+			//flag = 0;
+			//continue;
 		}
 		// To perform agree on flag
 		//PMPIX_Comm_agree(*comm_to_use, &flag);
@@ -921,9 +918,7 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 				flag = (MPI_SUCCESS == mpi_status);
 				
 				// To correct the comms
-				if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
-					flag = 0;
-				}
+				while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag));
 				// To perform agree on flag
 				//PMPIX_Comm_agree(*comm_to_use, &flag);
 
@@ -983,6 +978,10 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);
+	
+	if(comm == MPI_COMM_WORLD) {
+		comm_to_use = &(node.rep_mpi_comm_world);
+	}
 
 	do {
 
@@ -993,10 +992,6 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 			PMPI_Abort(node.rep_mpi_comm_world, 10);
 		}
 
-		if(comm == MPI_COMM_WORLD) {
-			comm_to_use = &(node.rep_mpi_comm_world);
-		}
-
 		if(node.active_comm != MPI_COMM_NULL) {
 			mpi_status = PMPI_Allreduce(SET_RIGHT_S_BUFFER(sbuffer), SET_RIGHT_R_BUFFER(rbuffer), count, datatype, op, node.active_comm);
 		}
@@ -1004,10 +999,10 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 		flag = (MPI_SUCCESS == mpi_status);
 
 		// To correct the comms
-		if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
-			flag = 0;
-			continue;
+			//flag = 0;
+			//continue;
 		}
 		// To perform agree on flag
 		//PMPIX_Comm_agree(*comm_to_use, &flag);
@@ -1030,9 +1025,7 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 				flag = (MPI_SUCCESS == mpi_status);
 				
 				// To correct the comms
-				if(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
-					flag = 0;
-				}
+				while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag));
 				// To perform agree on flag
 				//PMPIX_Comm_agree(*comm_to_use, &flag);
 
