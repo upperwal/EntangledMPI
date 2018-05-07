@@ -30,6 +30,8 @@ pthread_mutex_t global_mutex;
 pthread_mutex_t rep_time_mutex;
 pthread_mutex_t comm_use_mutex;
 
+pthread_mutexattr_t attr_comm_to_use;
+
 Job *job_list;
 Node node;
 
@@ -185,11 +187,13 @@ int MPI_Init(int *argc, char ***argv) {
 		exit(2);
 	}
 
-	// Lock global mutex. This mutex will always be locked when user program is executing.
+	pthread_mutexattr_settype(&attr_comm_to_use, PTHREAD_MUTEX_RECURSIVE);
+
 	pthread_mutex_init(&global_mutex, NULL);
 	pthread_mutex_init(&rep_time_mutex, NULL);
-	pthread_mutex_init(&comm_use_mutex, NULL);
+	pthread_mutex_init(&comm_use_mutex, &attr_comm_to_use);
 	
+	// Lock global mutex. This mutex will always be locked when user program is executing.
 	pthread_mutex_lock(&global_mutex);
 
 	debug_log_i("Address Stack new: %p | argv add: %p", stackStart, argv);
