@@ -16,6 +16,7 @@ int create_migration_comm(MPI_Comm *, int *, enum CkptBackup *);
 
 void update_comms();
 void release_comm_lock();
+void acquire_comm_lock();
 
 void print_job_list();
 

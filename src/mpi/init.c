@@ -152,6 +152,15 @@ int MPI_Init(int *argc, char ***argv) {
 	PMPI_Comm_set_errhandler(node.rep_mpi_comm_world, ulfm_err_handler);
 	//PMPI_Comm_set_errhandler(MPI_COMM_WORLD, ulfm_err_handler);
 
+	pthread_mutexattr_settype(&attr_comm_to_use, PTHREAD_MUTEX_RECURSIVE);
+
+	pthread_mutex_init(&global_mutex, NULL);
+	pthread_mutex_init(&rep_time_mutex, NULL);
+	pthread_mutex_init(&comm_use_mutex, &attr_comm_to_use);
+
+	// Lock global mutex. This mutex will always be locked when user program is executing.
+	pthread_mutex_lock(&global_mutex);
+
 	// job_list and node declared in shared.h
 	init_node(map_file, &job_list, &node);
 
@@ -186,15 +195,6 @@ int MPI_Init(int *argc, char ***argv) {
 		PMPI_Abort(node.rep_mpi_comm_world, 100);
 		exit(2);
 	}
-
-	pthread_mutexattr_settype(&attr_comm_to_use, PTHREAD_MUTEX_RECURSIVE);
-
-	pthread_mutex_init(&global_mutex, NULL);
-	pthread_mutex_init(&rep_time_mutex, NULL);
-	pthread_mutex_init(&comm_use_mutex, &attr_comm_to_use);
-	
-	// Lock global mutex. This mutex will always be locked when user program is executing.
-	pthread_mutex_lock(&global_mutex);
 
 	debug_log_i("Address Stack new: %p | argv add: %p", stackStart, argv);
 
@@ -232,6 +232,7 @@ int MPI_Comm_size(MPI_Comm comm, int *size) {
 int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
 	debug_log_i("In MPI_Send()");
 	is_file_update_set();
+	acquire_comm_lock();
 	debug_log_i("In MPI_Send() after is_file_update_set");
 
 	/*int sender = 0;
@@ -376,6 +377,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status) {
 	debug_log_i("In MPI_Recv()");
 	is_file_update_set();
+	acquire_comm_lock();
 
 	//int sender = 0;
 	int mpi_status;
@@ -430,6 +432,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 	MPI_Comm *comm_to_use;
 
 	is_file_update_set();
+	acquire_comm_lock();
 
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);
@@ -533,6 +536,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 	MPI_Comm *comm_to_use;
 
 	is_file_update_set();
+	acquire_comm_lock();
 
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);
@@ -652,6 +656,7 @@ int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm co
 	MPI_Comm *comm_to_use;
 
 	is_file_update_set();
+	acquire_comm_lock();
 
 	// Hack to pass pointers
 	DEFINE_BUFFER(buffer, buf);
@@ -741,6 +746,7 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 	MPI_Comm *comm_to_use;
 
 	is_file_update_set();
+	acquire_comm_lock();
 
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);
@@ -868,6 +874,7 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 	MPI_Comm *comm_to_use;
 
 	is_file_update_set();
+	acquire_comm_lock();
 
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);
@@ -979,6 +986,7 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 	MPI_Comm *comm_to_use;
 
 	is_file_update_set();
+	acquire_comm_lock();
 
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);

@@ -83,13 +83,9 @@ int is_file_update_set() {
 
 
 		}
-
-		// comm will be used after return
-		pthread_mutex_lock(&comm_use_mutex);
 		return 1;
 	}
 	else {
-		pthread_mutex_lock(&comm_use_mutex);
 		return 0;
 	}
 

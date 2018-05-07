@@ -139,7 +139,9 @@ void update_comms() {
 	int color = 0, rank_key = node.job_id;
 
 	// Explain
+	debug_log_i("Before Lock...");
 	pthread_mutex_lock(&comm_use_mutex);
+	debug_log_i("After Lock...");
 
 	// Although misguiding 'node.node_checkpoint_master' is not just used to mark a node
 	// which takes checkpoint on behalf of a job but it is also used to do communications
@@ -183,6 +185,10 @@ void update_comms() {
 	debug_log_i("Checkpoint MASTER: %d", node.node_checkpoint_master == YES);
 }
 
+void acquire_comm_lock() {
+	pthread_mutex_lock(&comm_use_mutex);
+}
+
 void release_comm_lock() {
 	pthread_mutex_unlock(&comm_use_mutex);
 }
@@ -195,13 +201,13 @@ int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ck
 	*/
 	int color, key, flag;
 
-	// TODO: Comm was getting corrupted (review this)
-	pthread_mutex_lock(&comm_use_mutex);
-
 	if(*ckpt_backup == BACKUP_YES) {
 		return 1;
 		*rep_flag = 0;
 	}
+
+	// TODO: Comm was getting corrupted (review this)
+	pthread_mutex_lock(&comm_use_mutex);
 
 	if(node.node_transit_state != NODE_DATA_NONE) {
 		color = node.job_id;
