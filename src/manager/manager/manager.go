@@ -17,6 +17,7 @@ func main() {
 	ranks := flag.Int("r", 0, "Total ranks spawnned")
 	choose := flag.Int("c", 0, "No of ranks to choose to replace in each iteration")
 	timeR := flag.Int("t", 15, "Time between replication map updates")
+	nosUpdates := flag.Int("u", 4, "Nos of update iteration")
 	flag.Parse()
 
 	if *jobs == 0 || *ranks == 0 {
@@ -37,11 +38,11 @@ func main() {
 	_jm := InitJobMap(*jobs, *ranks)
 	//jm := _jm.JMap
 	
-	for i := 0; i < 10; i++ {
+	for i := 0; i < *nosUpdates; i++ {
 		c := _jm.Choose(*choose)
 		_jm.Assign(c)
 
-		fmt.Printf("--> %d of %d updates\n", i+1, 10)
+		fmt.Printf("--> %d of %d updates\n", i+1, *nosUpdates)
 
 		/*for _jid, _j := range jm {
 			fmt.Println(_jid, _j.GetNumberOfRanks())
@@ -52,7 +53,10 @@ func main() {
 		_jm.ResetModified()
 
 		dur := time.Duration(*timeR) * time.Second
-		time.Sleep(dur)
+		
+		if i < *nosUpdates - 1 {
+			time.Sleep(dur)
+		}
 	}
 	
 }
