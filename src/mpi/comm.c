@@ -139,7 +139,7 @@ void update_comms() {
 	int color = 0, rank_key = node.job_id;
 
 	// Explain
-	pthread_mutex_trylock(&comm_use_mutex);
+	pthread_mutex_lock(&comm_use_mutex);
 
 	// Although misguiding 'node.node_checkpoint_master' is not just used to mark a node
 	// which takes checkpoint on behalf of a job but it is also used to do communications
