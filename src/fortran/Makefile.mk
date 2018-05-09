@@ -1,0 +1,1 @@
+libreplication_la_SOURCES += 	src/fortran/mpi.c
