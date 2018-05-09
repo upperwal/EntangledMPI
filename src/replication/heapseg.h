@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <mpi.h>
 
+#include "include/repmpi.h"
 #include "src/shared.h"
 #include "src/misc/log.h"
 
@@ -42,11 +43,6 @@ void rep_remove(void *);
 void rep_display();
 void rep_clear();
 void rep_clear_discontiguous();
-
-void rep_assign_malloc_context(const void **, const void **);
-
-void rep_malloc(void **, size_t);
-void rep_free(void **);
 
 int transfer_heap_seg(MPI_Comm);
 
