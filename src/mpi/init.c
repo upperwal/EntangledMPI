@@ -530,6 +530,95 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 	return MPI_SUCCESS;
 }
 
+int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
+
+	int mpi_status = MPI_SUCCESS;
+	int flag;
+	int total_trails = 0;
+	MPI_Comm *comm_to_use;
+
+	is_file_update_set();
+	acquire_comm_lock();
+
+	// Hack to pass pointers
+	DEFINE_BUFFER(buffer, buf);
+
+	if(comm == MPI_COMM_WORLD) {
+		comm_to_use = &(node.rep_mpi_comm_world);
+	}
+
+	do {
+		total_trails++;
+
+		if(total_trails >= NO_TRIALS) {
+			log_e("Total Trails exceeds. Aborting.");
+			PMPI_Abort(node.rep_mpi_comm_world, 10);
+		}
+
+		debug_log_i("Starting bcast: Comm: %p | node.rep_comm: %p | Comm to use: %p", comm, node.rep_mpi_comm_world, *comm_to_use);
+
+		int root_rank = job_list[root].rank_list[0];
+
+
+		mpi_status = PMPI_Bcast(SET_RIGHT_S_BUFFER(buffer), count, datatype, root_rank, *comm_to_use);
+
+
+		flag = (MPI_SUCCESS == mpi_status);
+
+		debug_log_i("bcast done Success: %d", flag);
+
+		// To correct the comms [Refer to Issue #29 on Github]
+		// while loop should only run twice:
+		//  1. To correct (shrink) the comm incase of failure
+		//  2. To agree on flag value
+		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+			debug_log_i("First Comm agree");
+			//flag = 0;
+			//continue; 	// This was a bad idea
+		}
+		// To perform agree on flag
+		//PMPIX_Comm_agree(comm_to_use, &flag);  	// Initial thinking was correct
+
+		if(!flag) {
+			debug_log_i("MPI_Bcast Failed");
+			flag = 0;
+			continue;
+		}
+
+	} while(!flag);
+
+	release_comm_lock();
+
+	return MPI_SUCCESS;
+
+
+	/*int color = 1;
+	int rank_order = 1;
+	MPI_Comm bcast_comm;
+
+	if(node.job_id == root) {
+		if(node.node_checkpoint_master == NO) {
+			color = 0;
+		}
+	}
+	else {
+		rank_order = 10;
+	}
+
+	// Is comm split an efficient method.
+	// What if replica node is allowed to receive data even though it already has it.
+	// Will it be more efficient as compared to creating a new comm for Bcast?
+
+	// Found something.
+	// This would require all nodes to know rank of sending node. This we have to send to all the nodes.
+	// This is an overhead. Its better to split and remove replica before. Like done here.
+	PMPI_Comm_split(comm, color, rank_order, &bcast_comm);
+
+	if(color == 1) {
+		return PMPI_Bcast(buffer, count, datatype, 0, bcast_comm);
+	}*/
+}
+
 int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm) {
 	
 	debug_log_i("MPI_Gather Call");
@@ -649,95 +738,6 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 
     return MPI_SUCCESS;*/
     
-}
-
-int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
-
-	int mpi_status = MPI_SUCCESS;
-	int flag;
-	int total_trails = 0;
-	MPI_Comm *comm_to_use;
-
-	is_file_update_set();
-	acquire_comm_lock();
-
-	// Hack to pass pointers
-	DEFINE_BUFFER(buffer, buf);
-
-	if(comm == MPI_COMM_WORLD) {
-		comm_to_use = &(node.rep_mpi_comm_world);
-	}
-
-	do {
-		total_trails++;
-
-		if(total_trails >= NO_TRIALS) {
-			log_e("Total Trails exceeds. Aborting.");
-			PMPI_Abort(node.rep_mpi_comm_world, 10);
-		}
-
-		debug_log_i("Starting bcast: Comm: %p | node.rep_comm: %p | Comm to use: %p", comm, node.rep_mpi_comm_world, *comm_to_use);
-		
-		int root_rank = job_list[root].rank_list[0];
-
-		
-		mpi_status = PMPI_Bcast(SET_RIGHT_S_BUFFER(buffer), count, datatype, root_rank, *comm_to_use);
-		
-
-		flag = (MPI_SUCCESS == mpi_status);
-
-		debug_log_i("bcast done Success: %d", flag);
-
-		// To correct the comms [Refer to Issue #29 on Github]
-		// while loop should only run twice:
-		//  1. To correct (shrink) the comm incase of failure
-		//  2. To agree on flag value
-		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
-			debug_log_i("First Comm agree");
-			//flag = 0;
-			//continue; 	// This was a bad idea
-		}
-		// To perform agree on flag
-		//PMPIX_Comm_agree(comm_to_use, &flag);  	// Initial thinking was correct
-
-		if(!flag) {
-			debug_log_i("MPI_Bcast Failed");
-			flag = 0;
-			continue;
-		}
-
-	} while(!flag);
-
-	release_comm_lock();
-
-	return MPI_SUCCESS;
-
-
-	/*int color = 1;
-	int rank_order = 1;
-	MPI_Comm bcast_comm;
-	
-	if(node.job_id == root) {
-		if(node.node_checkpoint_master == NO) {
-			color = 0;
-		}
-	}
-	else {
-		rank_order = 10;
-	}
-
-	// Is comm split an efficient method.
-	// What if replica node is allowed to receive data even though it already has it.
-	// Will it be more efficient as compared to creating a new comm for Bcast?
-
-	// Found something.
-	// This would require all nodes to know rank of sending node. This we have to send to all the nodes.
-	// This is an overhead. Its better to split and remove replica before. Like done here.
-	PMPI_Comm_split(comm, color, rank_order, &bcast_comm);
-	
-	if(color == 1) {
-		return PMPI_Bcast(buffer, count, datatype, 0, bcast_comm);
-	}*/
 }
 
 int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
