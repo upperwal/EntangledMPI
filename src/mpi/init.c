@@ -25,6 +25,8 @@ jmp_buf context;
 address stackHigherAddress, stackLowerAddress;
 enum MapStatus map_status;
 
+address stackStart;
+
 /* pthread mutex */
 pthread_mutex_t global_mutex;
 pthread_mutex_t rep_time_mutex;
@@ -61,7 +63,9 @@ void __attribute__((constructor)) calledFirst(void)
 {	
 	int a;
     printf("\nI am called first %p : %d \n", &a, getpid());
-    int hang = 1;
+    
+    stackStart = &a;
+    //int hang = 1;
 	/*while(hang) {
 		sleep(2);
 	}*/
@@ -167,14 +171,13 @@ int MPI_Init(int *argc, char ***argv) {
 	debug_log_i("Initialising MPI.");
 	debug_log_i("Node variable address: %p", &node);
 	
-	if(argv == NULL) {
+	/*if(argv == NULL) {
 		debug_log_e("You must pass &argv to MPI_Init()");
 		exit(0);
-	}
+	}*/
 
 	debug_log_i("WORLD_COMM Dup: %p", node.rep_mpi_comm_world);
 
-	address stackStart;
 	address temp_stackStart;
 
 	// Getting RBP only works if optimisation level is zero (O0).
@@ -187,7 +190,7 @@ int MPI_Init(int *argc, char ***argv) {
 		stackStart = **argv;
 	}*/
 
-	stackStart = *argv;
+	//stackStart = *argv;
 
 	PMPI_Allreduce(&stackStart, &temp_stackStart, sizeof(address), MPI_BYTE, MPI_BOR, node.rep_mpi_comm_world);
 
