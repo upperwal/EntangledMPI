@@ -47,14 +47,18 @@ void update_job_list(int size, int *translated_ranks) {
 
 void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
     
-    int err = *perr, eclass, compare_result;
+    int err = *perr, eclass, compare_result, err_len;
+    char err_string[100];
 
 	PMPI_Error_class(err, &eclass);
 
 	debug_log_i("Comm: %p | world: %p | Error: %d | Is W: %d | J: %d | A: %d", *pcomm, node.rep_mpi_comm_world, eclass == MPIX_ERR_PROC_FAILED, *pcomm == node.rep_mpi_comm_world, *pcomm == node.world_job_comm, *pcomm == node.active_comm);
 
-	if(MPIX_ERR_PROC_FAILED != eclass)
-		PMPI_Abort(node.rep_mpi_comm_world, 2);
+	if(MPIX_ERR_PROC_FAILED != eclass) {
+		PMPI_Error_string(err, err_string, &err_len);
+		debug_log_i("Error: %s", err_string);
+		PMPI_Abort(node.rep_mpi_comm_world, 300);
+	}
 
 	PMPI_Comm_compare(*pcomm, node.rep_mpi_comm_world, &compare_result);
 	debug_log_i("MPI_IDENT: %d | MPI_CONGRUENT: %d | MPI_SIMILAR: %d | MPI_UNEQUAL: %d", MPI_IDENT == compare_result, MPI_CONGRUENT == compare_result, MPI_SIMILAR == compare_result, MPI_UNEQUAL == compare_result);
