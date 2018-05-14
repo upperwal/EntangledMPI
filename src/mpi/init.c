@@ -1176,5 +1176,5 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 }
 
 int MPI_Wait(MPI_Request *request, MPI_Status *status) {
-	wait_for_agg_request(*request, status);
+	return wait_for_agg_request(*request, status);
 }
