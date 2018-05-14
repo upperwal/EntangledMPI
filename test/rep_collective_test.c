@@ -13,6 +13,8 @@ float *reduce_result;
 extern int __pass_sender_cont_add;
 extern int __pass_receiver_cont_add;
 
+extern Node node;
+
 void assign_data(float *buf, int size) {
 	for(int i = 0; i < size; i++) {
 		buf[i] = i;
@@ -157,5 +159,5 @@ int main(int argc, char **argv) {
 	MPI_Finalize();
 
 	MPI_Comm_rank(comm, &rank);
-	printf("*****DONE %d\n", rank);
+	printf("%d\n", node.rank);
 }
