@@ -141,3 +141,44 @@ void mpi_allreduce_(char *sendbuf, char *recvbuf, MPI_Fint *count, MPI_Fint *dat
     ierr_c = MPI_Allreduce(sendbuf, recvbuf, *count, c_type, c_op, c_comm);
     //if (NULL != ierr) *ierr = ierr_c;
 }
+
+void mpi_isend_(char *buf, MPI_Fint *count, MPI_Fint *datatype, MPI_Fint *dest, MPI_Fint *tag, MPI_Fint *comm, MPI_Fint *request, MPI_Fint *ierr) {
+    int c_ierr;
+    MPI_Datatype c_type = PMPI_Type_f2c(*datatype);
+    MPI_Request c_req;
+    MPI_Comm c_comm;
+
+    c_comm = PMPI_Comm_f2c (*comm);
+
+    c_ierr = MPI_Isend(buf, *count, c_type, *dest, *tag, c_comm, &c_req);
+    if (NULL != ierr) *ierr = c_ierr;
+
+    if (MPI_SUCCESS == c_ierr) {
+      *request = PMPI_Request_c2f(c_req);
+    }
+}
+
+void mpi_irecv_(char *buf, MPI_Fint *count, MPI_Fint *datatype, MPI_Fint *source, MPI_Fint *tag, MPI_Fint *comm, MPI_Fint *request, MPI_Fint *ierr) {
+    int c_ierr;
+    MPI_Datatype c_type = PMPI_Type_f2c(*datatype);
+    MPI_Request c_req;
+    MPI_Comm c_comm;
+
+    c_comm = PMPI_Comm_f2c (*comm);
+
+    c_ierr = MPI_Irecv(buf, *count, c_type, *source, *tag, c_comm, &c_req);
+    if (NULL != ierr) *ierr = c_ierr;
+
+    if (MPI_SUCCESS == c_ierr) {
+      *request = PMPI_Request_c2f(c_req);
+    }
+}
+
+void mpi_wait_(MPI_Fint *request, MPI_Fint *status, MPI_Fint *ierr) {
+    int c_ierr;
+    MPI_Request c_req = PMPI_Request_f2c(*request);
+    MPI_Status  c_status;
+
+    c_ierr = MPI_Wait(&c_req, &c_status);
+    if (NULL != ierr) *ierr = c_ierr;
+}
