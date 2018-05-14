@@ -14,6 +14,7 @@
 #include "src/mpi/comm.h"
 #include "src/checkpoint/full_context.h"
 #include "src/mpi/ulfm.h"
+#include "src/mpi/async.h"
 
 #define REP_THREAD_SLEEP_TIME 3
 #define NO_TRIALS 10
@@ -1082,4 +1083,98 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 	}
 	
 	return MPI_SUCCESS;*/
+}
+
+// Non blocking MPI_I* calls
+
+int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request) {
+	debug_log_i("In MPI_Isend()");
+	is_file_update_set();
+	acquire_comm_lock();
+	debug_log_i("In MPI_Isend() after is_file_update_set");
+
+	MPI_Comm comm_to_use;
+
+	if(comm == MPI_COMM_WORLD) {
+		// So that comm err handler do not identify it as rep_mpi_comm_world
+		// It will ignore it and will not enter the if statement.
+		// Note: If it enters, process will hang as functions inside are
+		// collective.
+		PMPI_Comm_dup(node.rep_mpi_comm_world, &comm_to_use);
+	}
+
+	DEFINE_BUFFER(buffer, buf);
+
+	int mpi_status;
+
+	Aggregate_Request *agg_req = new_agg_request();
+
+	// "request" variable will now contain the address of the aggregated request
+	// element instead of MPI_Request.
+	*request = (MPI_Request)agg_req;
+
+	for(int i=0; i<job_list[dest].worker_count; i++) {
+		//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
+		debug_log_i("SEND: Data: %d", *((int *)buf));
+
+		MPI_Request *r = add_new_request(agg_req);
+
+		mpi_status = PMPI_Isend(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, comm_to_use, r);
+
+		if(mpi_status != MPI_SUCCESS) {
+			debug_log_i("MPI_Isend Failed [Dest: %d]", (job_list[dest].rank_list)[i]);
+		}
+		else {
+			debug_log_i("MPI_Isend Success [Dest: %d]", (job_list[dest].rank_list)[i]);
+		}
+	}
+
+	release_comm_lock();
+
+	return mpi_status;
+}
+
+int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Request *request) {
+	debug_log_i("In MPI_Irecv()");
+	is_file_update_set();
+	acquire_comm_lock();
+
+	//int sender = 0;
+	int mpi_status;
+	MPI_Comm comm_to_use;
+
+	if(comm == MPI_COMM_WORLD) {
+		PMPI_Comm_dup(node.rep_mpi_comm_world, &comm_to_use);
+	}
+
+	DEFINE_BUFFER(buffer, buf);
+
+	Aggregate_Request *agg_req = new_agg_request();
+
+	// "request" variable will now contain the address of the aggregated request
+	// element instead of MPI_Request.
+	*request = (MPI_Request)agg_req;
+
+	for(int i=0; i<job_list[source].worker_count; i++) {
+
+		MPI_Request *r = add_new_request(agg_req);
+
+		mpi_status = PMPI_Irecv(SET_RIGHT_R_BUFFER(buffer), count, datatype, (job_list[source].rank_list)[i], tag, comm_to_use, r);
+
+		if(mpi_status != MPI_SUCCESS) {
+			debug_log_i("MPI_Irecv Failed [Dest: %d]", (job_list[source].rank_list)[i]);
+			//sender++;
+		}
+		else {
+			debug_log_i("MPI_Irecv Success [Dest: %d]", (job_list[source].rank_list)[i]);
+		}
+	}
+
+	release_comm_lock();
+
+	return mpi_status;
+}
+
+int MPI_Wait(MPI_Request *request, MPI_Status *status) {
+	wait_for_agg_request(*request, status);
 }
