@@ -1,3 +1,5 @@
+#include <mpi.h>
+
 #ifndef __REPMPI_H__
 #define __REPMPI_H__
 
