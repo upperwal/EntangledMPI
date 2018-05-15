@@ -3,6 +3,7 @@
 #define SIZE 10
 
 int global_data[SIZE];
+int recv_global[SIZE];
 
 int main(int argc, char** argv) {
 
@@ -38,19 +39,24 @@ int main(int argc, char** argv) {
 
 	MPI_Wait(&req, &stat);
 
-	if(rank == 1) {
-		for(int i=0; i< SIZE; i++) {
-			if(global_data[i]!= i) {
-				success = 0;
-				break;
-			}
-		}
+	MPI_Irecv(recv_global, SIZE, MPI_INT, 1 - rank, 0, comm, &req);
+	MPI_Send(global_data, SIZE, MPI_INT, 1 - rank, 0, comm);
 
-		if(success == 1) {
-			printf("SUCCESS\n");
-		}
-		else {
-			printf("FAIL\n");
+	MPI_Wait(&req, &stat);
+
+	for(int i=0; i< SIZE; i++) {
+		if(recv_global[i]!= i) {
+			success = 0;
+			break;
 		}
 	}
+
+	if(success == 1) {
+		printf("SUCCESS\n");
+	}
+	else {
+		printf("FAIL\n");
+	}
+
+	printf("DONE****\n");
 }
