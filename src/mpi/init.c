@@ -345,15 +345,16 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 		}
 	}*/
 
-	MPI_Comm comm_to_use;
+	MPI_Comm *comm_to_use;
 
 	if(comm == MPI_COMM_WORLD) {
 		// So that comm err handler do not identify it as rep_mpi_comm_world
 		// It will ignore it and will not enter the if statement.
 		// Note: If it enters, process will hang as functions inside are
 		// collective.
-		PMPI_Comm_dup(node.rep_mpi_comm_world, &comm_to_use);
-		//comm_to_use = &(node.rep_mpi_comm_world);
+		//PMPI_Comm_dup(node.rep_mpi_comm_world, &comm_to_use);
+
+		comm_to_use = &(node.rep_mpi_comm_world);
 	}
 
 	DEFINE_BUFFER(buffer, buf);
@@ -363,7 +364,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 	for(int i=0; i<job_list[dest].worker_count; i++) {
 		//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
 		debug_log_i("SEND: Data: %d", *((int *)buf));
-		mpi_status = PMPI_Send(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, comm_to_use);
+		mpi_status = PMPI_Send(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, *comm_to_use);
 
 		if(mpi_status != MPI_SUCCESS) {
 			debug_log_i("MPI_Send Failed [Dest: %d]", (job_list[dest].rank_list)[i]);
@@ -385,11 +386,12 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 
 	//int sender = 0;
 	int mpi_status;
-	MPI_Comm comm_to_use;
+	MPI_Comm *comm_to_use;
 
 	if(comm == MPI_COMM_WORLD) {
-		PMPI_Comm_dup(node.rep_mpi_comm_world, &comm_to_use);
-		//comm_to_use = &(node.rep_mpi_comm_world);
+		//PMPI_Comm_dup(node.rep_mpi_comm_world, &comm_to_use);
+
+		comm_to_use = &(node.rep_mpi_comm_world);
 	}
 
 	// DEBUG
@@ -412,7 +414,7 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 	DEFINE_BUFFER(buffer, buf);
 
 	for(int i=0; i<job_list[source].worker_count; i++) {
-		mpi_status = PMPI_Recv(SET_RIGHT_R_BUFFER(buffer), count, datatype, (job_list[source].rank_list)[i], tag, comm_to_use, status);
+		mpi_status = PMPI_Recv(SET_RIGHT_R_BUFFER(buffer), count, datatype, (job_list[source].rank_list)[i], tag, *comm_to_use, status);
 
 		if(mpi_status != MPI_SUCCESS) {
 			debug_log_i("MPI_Recv Failed [Dest: %d]", (job_list[source].rank_list)[i]);
@@ -1093,14 +1095,16 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 	acquire_comm_lock();
 	debug_log_i("In MPI_Isend() after is_file_update_set");
 
-	MPI_Comm comm_to_use;
+	MPI_Comm *comm_to_use;
 
 	if(comm == MPI_COMM_WORLD) {
 		// So that comm err handler do not identify it as rep_mpi_comm_world
 		// It will ignore it and will not enter the if statement.
 		// Note: If it enters, process will hang as functions inside are
 		// collective.
-		PMPI_Comm_dup(node.rep_mpi_comm_world, &comm_to_use);
+		//PMPI_Comm_dup(node.rep_mpi_comm_world, &comm_to_use);
+
+		comm_to_use = &(node.rep_mpi_comm_world);
 	}
 
 	DEFINE_BUFFER(buffer, buf);
@@ -1119,7 +1123,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 
 		MPI_Request *r = add_new_request(agg_req);
 
-		mpi_status = PMPI_Isend(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, comm_to_use, r);
+		mpi_status = PMPI_Isend(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, *comm_to_use, r);
 
 		if(mpi_status != MPI_SUCCESS) {
 			debug_log_i("MPI_Isend Failed [Dest: %d]", (job_list[dest].rank_list)[i]);
@@ -1139,12 +1143,15 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 	is_file_update_set();
 	acquire_comm_lock();
 
+
 	//int sender = 0;
 	int mpi_status;
-	MPI_Comm comm_to_use;
+	MPI_Comm *comm_to_use;
 
 	if(comm == MPI_COMM_WORLD) {
-		PMPI_Comm_dup(node.rep_mpi_comm_world, &comm_to_use);
+		//PMPI_Comm_dup(node.rep_mpi_comm_world, &comm_to_use);
+
+		comm_to_use = &(node.rep_mpi_comm_world);
 	}
 
 	DEFINE_BUFFER(buffer, buf);
@@ -1158,8 +1165,9 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 	for(int i=0; i<job_list[source].worker_count; i++) {
 
 		MPI_Request *r = add_new_request(agg_req);
-
-		mpi_status = PMPI_Irecv(SET_RIGHT_R_BUFFER(buffer), count, datatype, (job_list[source].rank_list)[i], tag, comm_to_use, r);
+		debug_log_i("*******REQUEST BEFORE: %p", *r);
+		mpi_status = PMPI_Irecv(SET_RIGHT_R_BUFFER(buffer), count, datatype, (job_list[source].rank_list)[i], tag, *comm_to_use, r);
+		debug_log_i("*******REQUEST AFTER: %p", *r);
 
 		if(mpi_status != MPI_SUCCESS) {
 			debug_log_i("MPI_Irecv Failed [Dest: %d]", (job_list[source].rank_list)[i]);
@@ -1176,5 +1184,6 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 }
 
 int MPI_Wait(MPI_Request *request, MPI_Status *status) {
+	debug_log_i("In MPI_Wait()");
 	return wait_for_agg_request(*request, status);
 }
