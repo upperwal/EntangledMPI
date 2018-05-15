@@ -58,6 +58,12 @@ MPI_Errhandler ulfm_err_handler;
 int __pass_sender_cont_add;
 int __pass_receiver_cont_add;
 
+// This variable is used in non-collective calls to ignore process failure errors.
+// Error handler uses collective calls and not call processes/ranks will be calling 
+// *send and *recv. Hance it could result in a deadlock, so better ignore and
+// correct comm in a collective call (happening sometime after this call)
+int __ignore_process_failure;
+
 extern Malloc_list *head;
 
 void __attribute__((constructor)) calledFirst(void)
@@ -239,111 +245,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 	acquire_comm_lock();
 	debug_log_i("In MPI_Send() after is_file_update_set");
 
-	/*int sender = 0;
-	int mpi_status;
-
-	//while(sender < job_list[node.job_id].worker_count) {
-
-		
-	for(int i=0; i<job_list[dest].worker_count; i++) {
-		//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
-		
-		if(node.rank == (job_list[node.job_id].rank_list)[sender]) {
-			debug_log_i("SEND: Data: %d", *((int *)buf));
-			mpi_status = PMPI_Send(buf, count, datatype, (job_list[dest].rank_list)[i], tag, comm);
-			
-			// If one of the receiving process/node fails, ignore it as its replica will
-			// receive the data or if no replica, abort will happen.
-			if(mpi_status == MPIX_ERR_PROC_FAILED) {
-				debug_log_i("MPI_Send Failed [Dest: %d]", (job_list[dest].rank_list)[i]);
-			}
-			else {
-				debug_log_i("MPI_Send Success [Dest: %d]", (job_list[dest].rank_list)[i]);
-			}
-		}
-
-		debug_log_i("Before Send barrier");
-
-		// This barrier is to check if any node within this job has died.
-		// If yes, we assume previous MPI_Send was also a failure so try 
-		// to send it again.
-
-		// If MPI_Send was a success and MPI_Barrier fails, there would be no
-		// corresponding MPI_Recv if we try MPI_Send again. This could be a 
-		// PROBLEM.
-		mpi_status = PMPI_Barrier(node.world_job_comm);
-
-
-
-		debug_log_i("After Send barrier | Is status: %d | MPI_SUCCESS: %d", mpi_status, MPI_SUCCESS);
-		//MPIX_Comm_failure_ack(node.world_job_comm);
-		
-		//ulfm_detect(mpi_status);
-
-		// if this status is not MPI_SUCCESS a sender node has died.
-		// TODO: What if replica died. This will increment the sender which is incorrect.
-		if(mpi_status == MPI_ERR_PROC_FAILED) {
-			debug_log_i("Died Rank: %d", (job_list[node.job_id].rank_list)[sender]);
-			MPI_Comm new_job_comm;
-
-			mpi_status = PMPIX_Comm_shrink(node.world_job_comm, &new_job_comm);
-			
-
-			// DEBUG CODE
-			char str[500];
-			int len;
-
-			if (mpi_status) {
-				int errclass;
-				MPI_Error_class(mpi_status, &errclass);
-				MPI_Error_string(mpi_status, str, &len);
-				debug_log_i("Expected MPI_SUCCESS from MPIX_Comm_shrink. Received: %s\n", str);
-				//errs++;
-				MPI_Abort(node.rep_mpi_comm_world, 1);
-			}
-			// DEBUG CODE ENDS
-
-
-			int sz;
-			int rk;
-			PMPI_Comm_rank(new_job_comm, &rk);
-			PMPI_Comm_size(new_job_comm, &sz);
-			debug_log_i("Shrink Comm Rank: %d | Size: %d", rk, sz);
-			
-			PMPI_Comm_free(node.world_job_comm);
-			node.world_job_comm = new_job_comm;
-			
-			i--;
-			sender++;
-		}
-		else {
-			debug_log_i("Rank: %d able to send to all", (job_list[node.job_id].rank_list)[sender]);
-			//break;
-		}
-	}*/
-
-	/*MPI_Comm *comm_to_use;
-
-	if(comm == MPI_COMM_WORLD) {
-		comm_to_use = &(node.rep_mpi_comm_world);
-	}
-
-	// Not fault tolerant
-	if(node.node_checkpoint_master == YES) {
-		DEFINE_BUFFER(buffer, buf);
-		for(int i=0; i<job_list[dest].worker_count; i++) {
-			//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
-			debug_log_i("SEND: Data: %d", *((int *)buf));
-			int mpi_status = PMPI_Send(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, *comm_to_use);
-			
-			if(mpi_status != MPI_SUCCESS) {
-				debug_log_i("MPI_Send Failed [Dest: %d]", (job_list[dest].rank_list)[i]);
-			}
-			else {
-				debug_log_i("MPI_Send Success [Dest: %d]", (job_list[dest].rank_list)[i]);
-			}
-		}
-	}*/
+	__ignore_process_failure = 1;
 
 	MPI_Comm *comm_to_use;
 
@@ -374,6 +276,8 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 		}
 	}
 
+	__ignore_process_failure = 0;
+
 	release_comm_lock();
 
 	return mpi_status;
@@ -383,6 +287,8 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 	debug_log_i("In MPI_Recv()");
 	is_file_update_set();
 	acquire_comm_lock();
+
+	__ignore_process_failure = 1;
 
 	//int sender = 0;
 	int mpi_status;
@@ -424,6 +330,8 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 			debug_log_i("MPI_Recv Success [Dest: %d]", (job_list[source].rank_list)[i]);
 		}
 	}
+
+	__ignore_process_failure = 0;
 
 	release_comm_lock();
 
@@ -1095,6 +1003,8 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 	acquire_comm_lock();
 	debug_log_i("In MPI_Isend() after is_file_update_set");
 
+	__ignore_process_failure = 1;
+
 	MPI_Comm *comm_to_use;
 
 	if(comm == MPI_COMM_WORLD) {
@@ -1133,6 +1043,8 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 		}
 	}
 
+	__ignore_process_failure = 0;
+
 	release_comm_lock();
 
 	return mpi_status;
@@ -1143,6 +1055,7 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 	is_file_update_set();
 	acquire_comm_lock();
 
+	__ignore_process_failure = 1;
 
 	//int sender = 0;
 	int mpi_status;
@@ -1177,6 +1090,8 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 			debug_log_i("MPI_Irecv Success [Dest: %d]", (job_list[source].rank_list)[i]);
 		}
 	}
+
+	__ignore_process_failure = 0;
 
 	release_comm_lock();
 

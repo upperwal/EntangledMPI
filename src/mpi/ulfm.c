@@ -3,6 +3,8 @@
 extern Job *job_list;
 extern Node node;
 
+extern int __ignore_process_failure;
+
 MPI_Group last_group_failed;	// This is the group of nodes which failed recently.
 MPI_Group previous_world_group;
 
@@ -62,7 +64,7 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
 
 	PMPI_Comm_compare(*pcomm, node.rep_mpi_comm_world, &compare_result);
 	debug_log_i("MPI_IDENT: %d | MPI_CONGRUENT: %d | MPI_SIMILAR: %d | MPI_UNEQUAL: %d", MPI_IDENT == compare_result, MPI_CONGRUENT == compare_result, MPI_SIMILAR == compare_result, MPI_UNEQUAL == compare_result);
-	if(*pcomm == node.rep_mpi_comm_world && MPIX_ERR_PROC_FAILED == eclass) {
+	if(*pcomm == node.rep_mpi_comm_world && MPIX_ERR_PROC_FAILED == eclass && !__ignore_process_failure) {
 
 		int *rank_arr_group_world_dup, *rank_arr_group_world_shrinked;
 		int size;
