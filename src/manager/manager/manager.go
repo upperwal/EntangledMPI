@@ -25,6 +25,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if *jobs > *ranks {
+		fmt.Println("Error: jobs <= ranks")
+		os.Exit(1)
+	}
+
 	if *choose == 0 {
 		*choose = *ranks - *jobs
 	}
