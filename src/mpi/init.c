@@ -69,7 +69,6 @@ extern Malloc_list *head;
 void __attribute__((constructor)) calledFirst(void)
 {	
 	int a;
-    printf("\nI am called first %p : %d \n", &a, getpid());
     
     stackStart = &a;
     //int hang = 1;
