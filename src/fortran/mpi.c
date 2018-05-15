@@ -154,7 +154,7 @@ void mpi_isend_(char *buf, MPI_Fint *count, MPI_Fint *datatype, MPI_Fint *dest, 
     if (NULL != ierr) *ierr = c_ierr;
 
     if (MPI_SUCCESS == c_ierr) {
-      *request = PMPI_Request_c2f(c_req);
+      *request = c_req;
     }
 }
 
@@ -170,13 +170,14 @@ void mpi_irecv_(char *buf, MPI_Fint *count, MPI_Fint *datatype, MPI_Fint *source
     if (NULL != ierr) *ierr = c_ierr;
 
     if (MPI_SUCCESS == c_ierr) {
-      *request = PMPI_Request_c2f(c_req);
+      *request = c_req;
     }
+    debug_log_i("*request: %p | c_req: %p", *request, c_req);
 }
 
 void mpi_wait_(MPI_Fint *request, MPI_Fint *status, MPI_Fint *ierr) {
     int c_ierr;
-    MPI_Request c_req = PMPI_Request_f2c(*request);
+    MPI_Request c_req = *request;
     MPI_Status  c_status;
 
     c_ierr = MPI_Wait(&c_req, &c_status);
