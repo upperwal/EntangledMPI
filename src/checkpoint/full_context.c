@@ -180,11 +180,11 @@ int does_ckpt_file_exists(char *file_name) {
 	sprintf(file, file_name, node.job_id);
 
 	if(access(file, F_OK) != -1) {
-		log_i("Ckpt file exist: YES");
+		debug_log_i("Ckpt file exist: YES");
 		return 1;
 	}
 	else {
-		log_i("Ckpt file does not exist: NO");
+		debug_log_i("Ckpt file does not exist: NO");
 		return 0;
 	}
 }
