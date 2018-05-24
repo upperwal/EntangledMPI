@@ -2,6 +2,7 @@
 
 extern Node node;
 extern Job *job_list;
+extern int *rank_2_job;
 
 extern enum CkptBackup ckpt_backup;
 
@@ -64,7 +65,10 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 	free(*job_list);
 
 	int my_rank = (*node).rank;
-	
+
+	if(rank_2_job == NULL) {
+		rank_2_job = malloc(sizeof(int) * cores);
+	}
 
 	*job_list = (Job *)malloc(sizeof(Job) * jobs);
 	for(int i=0; i<jobs; i++) {
@@ -92,6 +96,8 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 		for(int j=0; j<w_c; j++) {
 			
 			fscanf(pointer, "\t%d", &w_rank);
+
+			rank_2_job[w_rank] = j_id;
 
 			if(j == 0 && w_rank == my_rank) {
 				(*node).node_checkpoint_master = YES;

@@ -37,6 +37,7 @@ pthread_mutexattr_t attr_comm_to_use;
 
 Job *job_list;
 Node node;
+int *rank_2_job = NULL;
 
 char *map_file = "./replication.map";
 #define ckpt_file "./ckpt/rank-%d.ckpt"
@@ -71,8 +72,9 @@ void __attribute__((constructor)) calledFirst(void)
 	int a;
     
     stackStart = &a;
-    //int hang = 1;
-	/*while(hang) {
+    /*int hang = 1;
+    debug_log_i("Program Hanged");
+	while(hang) {
 		sleep(2);
 	}*/
 }
@@ -198,13 +200,13 @@ int MPI_Init(int *argc, char ***argv) {
 
 	//stackStart = *argv;
 
-	PMPI_Allreduce(&stackStart, &temp_stackStart, sizeof(address), MPI_BYTE, MPI_BOR, node.rep_mpi_comm_world);
+	/*PMPI_Allreduce(&stackStart, &temp_stackStart, sizeof(address), MPI_BYTE, MPI_BOR, node.rep_mpi_comm_world);
 
 	if(stackStart != temp_stackStart) {
 		PMPI_Abort(node.rep_mpi_comm_world, 100);
 		exit(2);
 	}
-
+*/
 	debug_log_i("Address Stack new: %p | argv add: %p", stackStart, argv);
 
 	ckpt_bit = does_ckpt_file_exists(ckpt_file);
@@ -227,7 +229,7 @@ int MPI_Init(int *argc, char ***argv) {
 }
 
 int MPI_Finalize(void) {
-	return PMPI_Finalize();
+	return MPI_Barrier(node.rep_mpi_comm_world);//PMPI_Finalize();
 }
 
 int MPI_Comm_rank(MPI_Comm comm, int *rank) {
@@ -264,7 +266,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 
 	for(int i=0; i<job_list[dest].worker_count; i++) {
 		//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
-		debug_log_i("SEND: Data: %d", *((int *)buf));
+		debug_log_i("SEND: Data: %d to %d", *((int *)buf), (job_list[dest].rank_list)[i]);
 		mpi_status = PMPI_Send(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, *comm_to_use);
 
 		if(mpi_status != MPI_SUCCESS) {
@@ -278,6 +280,8 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 	__ignore_process_failure = 0;
 
 	release_comm_lock();
+
+	debug_log_i("Still Alive");
 
 	return mpi_status;
 }
@@ -1074,19 +1078,38 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 	// element instead of MPI_Request.
 	*request = (MPI_Request)agg_req;
 
-	for(int i=0; i<job_list[source].worker_count; i++) {
+	int worker_count;
+
+	if(source == MPI_ANY_SOURCE) {
+		// Very tricky to set.
+		// If less and user sends more MPI_Send it will block the program.
+		// TODO: Find a better solution for MPI_ANY_SOURCE
+		worker_count = 2;
+	} else {
+		worker_count = job_list[source].worker_count;
+	}
+
+	for(int i=0; i<worker_count; i++) {
+
+		int recv_source;
+		recv_source = (source == MPI_ANY_SOURCE) ? MPI_ANY_SOURCE : (job_list[source].rank_list)[i];
+		/*if(source == MPI_ANY_SOURCE) {
+			recv_source = MPI_ANY_SOURCE;
+		} else {
+			recv_source = (job_list[source].rank_list)[i];
+		}*/
 
 		MPI_Request *r = add_new_request(agg_req);
-		debug_log_i("*******REQUEST BEFORE: %p", *r);
-		mpi_status = PMPI_Irecv(SET_RIGHT_R_BUFFER(buffer), count, datatype, (job_list[source].rank_list)[i], tag, *comm_to_use, r);
+		debug_log_i("*******REQUEST BEFORE: %p | Source: %d", *r, recv_source);
+		mpi_status = PMPI_Irecv(SET_RIGHT_R_BUFFER(buffer), count, datatype, recv_source, tag, *comm_to_use, r);
 		debug_log_i("*******REQUEST AFTER: %p", *r);
 
 		if(mpi_status != MPI_SUCCESS) {
-			debug_log_i("MPI_Irecv Failed [Dest: %d]", (job_list[source].rank_list)[i]);
+			debug_log_i("MPI_Irecv Failed [Source: %d]", recv_source);
 			//sender++;
 		}
 		else {
-			debug_log_i("MPI_Irecv Success [Dest: %d]", (job_list[source].rank_list)[i]);
+			debug_log_i("MPI_Irecv Success [Source: %d]", recv_source);
 		}
 	}
 

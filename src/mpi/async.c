@@ -1,5 +1,7 @@
 #include "async.h"
 
+extern int *rank_2_job;
+
 Aggregate_Request *new_agg_request() {
 	Aggregate_Request *agg_req = (Aggregate_Request *)malloc(sizeof(Aggregate_Request));
 	agg_req->list = NULL;
@@ -81,6 +83,7 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 	int r_count;
 	MPI_Request *arr_request;
 	MPI_Status *arr_status;
+	Aggregate_Request *agg_req = (Aggregate_Request *)agg;
 
 	arr_request = get_array_of_request(agg, &r_count);
 
@@ -88,10 +91,12 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 		return MPI_SUCCESS;
 	}
 
-
+	int wa_index;
+	int result;
 
 	if(status == MPI_STATUS_IGNORE) {
-		int result = PMPI_Waitall(r_count, arr_request, MPI_STATUSES_IGNORE);
+		//result = PMPI_Waitany(r_count, arr_request, &wa_index, status);
+		result = PMPI_Waitall(r_count, arr_request, MPI_STATUSES_IGNORE);
 
 		free_agg_request(agg);
 		free(arr_request);
@@ -101,19 +106,16 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 	else {
 		arr_status = (MPI_Status *)malloc(sizeof(MPI_Status) * r_count);
 
-		/*for(int i=0;i<1;i++) {
-			debug_log_i("Count: %d", i);
-			
-		}*/
-
 		//PMPI_Wait(arr_request, arr_status);
 		PMPI_Waitall(r_count, arr_request, arr_status);
+		//MPI_Status wa_status;
+		//result = PMPI_Waitany(r_count, arr_request, &wa_index, &wa_status);
 
 		// TODO: Need to update the MPI_SOURCE 
 		// Current implementation will send the original rank and not the job no.
 		for(int i=0; i<r_count; i++) {
 			if(arr_status[i].MPI_ERROR != MPI_SUCCESS) {
-				(*status).MPI_SOURCE = arr_status[i].MPI_SOURCE;
+				(*status).MPI_SOURCE = rank_2_job[arr_status[i].MPI_SOURCE];
 				(*status).MPI_TAG = arr_status[i].MPI_TAG;
 				(*status).MPI_ERROR = arr_status[i].MPI_ERROR;
 
@@ -121,14 +123,16 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 			}
 		}
 
-		(*status).MPI_SOURCE = arr_status[0].MPI_SOURCE;
-		(*status).MPI_TAG = arr_status[0].MPI_TAG;
-		(*status).MPI_ERROR = arr_status[0].MPI_ERROR;
+		*status = arr_status[0];
+		(*status).MPI_SOURCE = rank_2_job[arr_status[0].MPI_SOURCE];
+
+		//*status = wa_status;
+		//(*status).MPI_SOURCE = rank_2_job[wa_status.MPI_SOURCE];
 
 		free_agg_request(agg);
 		free(arr_request);
 
-		return MPI_SUCCESS;
+		return result;
 	}
 	
 }

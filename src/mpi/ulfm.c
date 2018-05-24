@@ -2,6 +2,7 @@
 
 extern Job *job_list;
 extern Node node;
+extern int *rank_2_job;
 
 extern int __ignore_process_failure;
 
@@ -28,12 +29,13 @@ void update_job_list(int size, int *translated_ranks) {
 				job_list[i].worker_count--;
 
 				if(job_list[i].worker_count == 0) {
-					debug_log_e("Job: %d has no living worker node.", i);
+					log_e("Job: %d has no living worker node.", i);
 					PMPI_Abort(node.rep_mpi_comm_world, 200);
 				}
 			}
 			else {
 				(job_list[i].rank_list)[overwrite_pointer++] = translated_ranks[rank];
+				rank_2_job[ translated_ranks[rank] ] = i;
 			}
 		
 		}
@@ -58,7 +60,7 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
 
 	if(MPIX_ERR_PROC_FAILED != eclass) {
 		PMPI_Error_string(err, err_string, &err_len);
-		debug_log_i("Error: %s", err_string);
+		log_e("Error: %s", err_string);
 		PMPI_Abort(node.rep_mpi_comm_world, 300);
 	}
 
