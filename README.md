@@ -22,20 +22,21 @@ This project is a fault tolerance framework for parallel applications. Below is 
 | -------- 	|-------------         							| -----			|
 | 1 		| ```MPI_Init``` 								| master (OK) 	|
 | 2 		| ```MPI_Finalize``` 							| master (OK) 	|
-| 3 		| ```MPI_Comm_rank``` 							| master (OK) 	|
-| 4 		| ```MPI_Comm_size``` 							| master (OK) 	|
-| 5 		| ```MPI_Send``` 								| master (OK) 	|
-| 6 		| ```MPI_Recv``` 								| master (OK) 	|
-| 7 		| ```MPI_Scatter``` 							| master (OK) 	|
-| 8 		| ```MPI_Gather``` 								| master (OK) 	|
-| 9 		| ```MPI_Bcast``` 								| master (OK) 	|
-| 10 		| ```MPI_Allgather``` 							| master (OK) 	|
-| 11 		| ```MPI_Reduce``` 								| master (OK) 	|
-| 12 		| ```MPI_Allreduce``` 							| master (OK) 	|
-| 13 		| ```MPI_Isend``` 								| master (OK) 	|
-| 14 		| ```MPI_Irecv``` 								| master (OK) 	|
-| 15 		| ```MPI_Wait``` 								| master (OK) 	|
-| 16 		| ```MPI_*``` (other async calls) 				| future 		|
+| 3 		| ```MPI_Barrier``` 							| master (OK) 	|
+| 4 		| ```MPI_Comm_rank``` 							| master (OK) 	|
+| 5 		| ```MPI_Comm_size``` 							| master (OK) 	|
+| 6 		| ```MPI_Send``` 								| master (OK) 	|
+| 7 		| ```MPI_Recv``` 								| master (OK) 	|
+| 8 		| ```MPI_Scatter``` 							| master (OK) 	|
+| 9 		| ```MPI_Gather``` 								| master (OK) 	|
+| 10 		| ```MPI_Bcast``` 								| master (OK) 	|
+| 11 		| ```MPI_Allgather``` 							| master (OK) 	|
+| 12 		| ```MPI_Reduce``` 								| master (OK) 	|
+| 13 		| ```MPI_Allreduce``` 							| master (OK) 	|
+| 14 		| ```MPI_Isend``` 								| master (OK) 	|
+| 15 		| ```MPI_Irecv``` 								| master (OK) 	|
+| 16 		| ```MPI_Wait``` 								| master (OK) 	|
+| 17 		| ```MPI_*``` (other async calls) 				| future 		|
 
 ## API
 
