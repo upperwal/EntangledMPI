@@ -23,6 +23,16 @@ void mpi_finalize_(MPI_Fint *ierr) {
 	debug_log_i("[Fortran] MPI_Finalize");
 }
 
+void mpi_barrier_(MPI_Fint *comm, MPI_Fint *ierr) {
+    int ierr_c;
+    MPI_Comm c_comm;
+
+    c_comm = PMPI_Comm_f2c(*comm);
+
+    ierr_c = MPI_Barrier(c_comm);
+    //if (NULL != ierr) *ierr = OMPI_INT_2_FINT(ierr_c);
+}
+
 void mpi_comm_rank_(MPI_Fint *comm, MPI_Fint *rank, MPI_Fint *ierr) {
 	int c_ierr;
 	debug_log_i("Rank");
@@ -115,7 +125,7 @@ void mpi_allgather_(char *sendbuf, MPI_Fint *sendcount, MPI_Fint *sendtype, char
 }
 
 void mpi_reduce_(char *sendbuf, char *recvbuf, MPI_Fint *count, MPI_Fint *datatype, MPI_Fint *op, MPI_Fint *root, MPI_Fint *comm, MPI_Fint *ierr) {
-	int c_ierr;
+    int c_ierr;
     MPI_Datatype c_type;
     MPI_Op c_op;
     MPI_Comm c_comm;

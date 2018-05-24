@@ -232,6 +232,13 @@ int MPI_Finalize(void) {
 	return MPI_Barrier(node.rep_mpi_comm_world);//PMPI_Finalize();
 }
 
+int MPI_Barrier(MPI_Comm comm) {
+	if(comm == MPI_COMM_WORLD) {
+		return PMPI_Barrier(node.rep_mpi_comm_world);
+	}
+	return PMPI_Barrier(comm);
+}
+
 int MPI_Comm_rank(MPI_Comm comm, int *rank) {
 	*rank = node.job_id;
 }
