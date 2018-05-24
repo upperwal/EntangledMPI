@@ -1,14 +1,15 @@
 #include <stdio.h>
 #include "src/replication/rep.h"
 
-#define DATA_SIZE 4
-
 extern Node node;
+
+int success[3];
 
 int main(int argc, char** argv){
 	MPI_Init(&argc, &argv);
 
 	int rank, size, send, reduce_result;
+
 
 	MPI_Comm comm = MPI_COMM_WORLD;
 
@@ -18,22 +19,43 @@ int main(int argc, char** argv){
 	if(node.rank == 0)
 		exit(EXIT_FAILURE);
 
-	send = rank;
+	send = rank + 1;
 
-	MPI_Reduce(&send, &reduce_result, 1, MPI_INT, MPI_MAX, 0, comm);
+	for(int i=0; i<size; i++) {
+		MPI_Reduce(&send, &reduce_result, 1, MPI_INT, MPI_MAX, i, comm);
 
-	int success = 0;
-	if(rank == 0) {
-		if(reduce_result == size - 1)
-			success = 1;
-		if(success) {
-			printf("Rank: %d SUCCESS\n", rank);
+		if(rank == i) {
+			if(reduce_result == size)
+				success[0] = 1;
 		}
-		else {
-			printf("Rank: %d FAIL\n", rank);
+
+		MPI_Reduce(&send, &reduce_result, 1, MPI_INT, MPI_MIN, i, comm);
+
+		if(rank == i) {
+			if(reduce_result == 1)
+				success[1] = 1;
+		}
+
+		MPI_Reduce(&send, &reduce_result, 1, MPI_INT, MPI_SUM, i, comm);
+
+		if(rank == i) {
+			if(reduce_result == (size * (size + 1) / 2))
+				success[2] = 1;
 		}
 	}
-	
+
+	if(success[0] == 1 && success[1] == 1 && success[2] == 1) {
+		printf("Rank: %d SUCCESS\n", rank);
+	}
+	else {
+		if(success[0] != 1)
+			printf("Rank: %d FAIL: MPI_MAX\n", rank);
+		if(success[1] != 1)
+			printf("Rank: %d FAIL: MPI_MIN\n", rank);
+		if(success[2] != 1)
+			printf("Rank: %d FAIL: MPI_SUM\n", rank);
+	}
+
 	MPI_Finalize();
 	return 1;
 }

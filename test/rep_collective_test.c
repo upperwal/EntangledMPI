@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include "src/replication/rep.h"
 
-#define SMALL_BUF_SIZE 5000
-#define SLEEP_TIME 2
+#define SMALL_BUF_SIZE 10
+#define SLEEP_TIME 0
 
 float *big_buffer;
 float *small_buffer;
@@ -151,6 +151,13 @@ int main(int argc, char **argv) {
 	sleep(SLEEP_TIME);
 	// ALL REDUCE ENDS
 
+	float sum = 0;
+	for(int i=0; i<SMALL_BUF_SIZE * size; i++) {
+		sum += reduce_result[i];
+	}
+
+	MPI_Comm_rank(comm, &rank);
+	printf("%d : %f\n", node.rank, sum);
 
 	rep_free((void **)&big_buffer);
 	rep_free((void **)&small_buffer);
@@ -158,6 +165,5 @@ int main(int argc, char **argv) {
 
 	MPI_Finalize();
 
-	MPI_Comm_rank(comm, &rank);
-	printf("%d\n", node.rank);
+	
 }
