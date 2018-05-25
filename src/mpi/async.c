@@ -96,18 +96,18 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 
 	if(status == MPI_STATUS_IGNORE) {
 		//result = PMPI_Waitany(r_count, arr_request, &wa_index, status);
-		result = PMPI_Waitall(r_count, arr_request, MPI_STATUSES_IGNORE);
+		while(PMPI_Waitall(r_count, arr_request, MPI_STATUSES_IGNORE) != MPI_SUCCESS);
 
 		free_agg_request(agg);
 		free(arr_request);
 
-		return result;
+		return MPI_SUCCESS;
 	}
 	else {
 		arr_status = (MPI_Status *)malloc(sizeof(MPI_Status) * r_count);
 
 		//PMPI_Wait(arr_request, arr_status);
-		PMPI_Waitall(r_count, arr_request, arr_status);
+		while(PMPI_Waitall(r_count, arr_request, arr_status) != MPI_SUCCESS);
 		//MPI_Status wa_status;
 		//result = PMPI_Waitany(r_count, arr_request, &wa_index, &wa_status);
 
@@ -122,6 +122,10 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 				return MPI_SUCCESS;
 			}
 		}
+
+		// TODO: IMPORTANT
+		// What if nodes associated with arr_status[0] dies?
+		// What happens then?
 
 		*status = arr_status[0];
 		(*status).MPI_SOURCE = rank_2_job[arr_status[0].MPI_SOURCE];
