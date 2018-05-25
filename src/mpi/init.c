@@ -1129,5 +1129,9 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 
 int MPI_Wait(MPI_Request *request, MPI_Status *status) {
 	debug_log_i("In MPI_Wait()");
-	return wait_for_agg_request(*request, status);
+	__ignore_process_failure = 1;
+	int s = wait_for_agg_request(*request, status);
+	__ignore_process_failure = 0;
+
+	return s;
 }
