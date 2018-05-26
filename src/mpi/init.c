@@ -38,6 +38,7 @@ pthread_mutexattr_t attr_comm_to_use;
 Job *job_list;
 Node node;
 int *rank_2_job = NULL;
+int __request_pending;
 
 char *map_file = "./replication.map";
 #define ckpt_file "./ckpt/rank-%d.ckpt"
@@ -64,6 +65,9 @@ int __pass_receiver_cont_add;
 // *send and *recv. Hance it could result in a deadlock, so better ignore and
 // correct comm in a collective call (happening sometime after this call)
 int __ignore_process_failure;
+
+int mutex_status;
+int global_mutex_status;
 
 extern Malloc_list *head;
 
@@ -96,18 +100,46 @@ void *rep_thread_init(void *_stackHigherAddress) {
 		// Start checking for any map file updates.
 		if(is_file_modified(map_file, &last_update, &ckpt_backup)) {
 			
-			debug_log_i("Inside Modified file");
+			log_i("Inside Modified file");
 
 			parse_map_file(map_file, &job_list, &node, &ckpt_backup);
 
-			update_comms();
+			while(1) {
+				mutex_status = pthread_mutex_trylock(&comm_use_mutex);
+
+				// while to handle all process failure for MPI_Allgather
+				log_i("All Reduce doing: %d", mutex_status);
+				// TODO [IMPORTANT]: Will not work in case of process failure.
+				PMPI_Allreduce(&mutex_status, &global_mutex_status, 1, MPI_INT, MPI_SUM, node.rep_mpi_comm_world);
+				log_i("All Reduce hogaya: %d", global_mutex_status);
+				if(global_mutex_status == 0) {
+					// Everyone acquired lock.
+					log_i("BREAKING");
+					break;
+				} else {
+					log_i("No Success: %d", mutex_status);
+					/*if(mutex_status == 0) {
+						
+					}*/
+					pthread_mutex_unlock(&comm_use_mutex);
+				}
+				sleep(2);
+			}
+			log_i("Before update %d", global_mutex_status);
+			update_comms(); 	// Maybe remove comm_use_mutex locking inside this function.
+
+			log_i("after update comm");
 			
 			if(create_migration_comm(&job_comm, &rep_flag, &ckpt_backup) ) {
+
+				log_i("Just inside cr mig");
 				
 				pthread_mutex_lock(&rep_time_mutex);
+				log_i("rep_time_mutex locked");
 				
 				map_status = MAP_UPDATED;
-				debug_log_i("Modified Signal ON");
+				pthread_mutex_unlock(&comm_use_mutex);
+				log_i("Modified Signal ON");
 				
 				pthread_mutex_lock(&global_mutex);
 				log_i("Main thread blocked");
@@ -124,8 +156,8 @@ void *rep_thread_init(void *_stackHigherAddress) {
 				else {
 				
 					// Checkpoint creation
-					if(node.node_checkpoint_master == YES)
-						init_ckpt(ckpt_file);
+					/*if(node.node_checkpoint_master == YES)
+						init_ckpt(ckpt_file);*/
 
 					// Replica creation
 					if(rep_flag)
@@ -136,6 +168,9 @@ void *rep_thread_init(void *_stackHigherAddress) {
 
 				pthread_mutex_unlock(&global_mutex);
 				pthread_mutex_unlock(&rep_time_mutex);
+			}
+			else {
+				pthread_mutex_unlock(&comm_use_mutex);
 			}
 			
 		}
@@ -164,6 +199,8 @@ int MPI_Init(int *argc, char ***argv) {
 	PMPI_Comm_set_errhandler(node.rep_mpi_comm_world, ulfm_err_handler);
 	//PMPI_Comm_set_errhandler(MPI_COMM_WORLD, ulfm_err_handler);
 
+	// Recurssive is important as this is used in rep_thread_init
+	// in a recurssive manner.
 	pthread_mutexattr_settype(&attr_comm_to_use, PTHREAD_MUTEX_RECURSIVE);
 
 	pthread_mutex_init(&global_mutex, NULL);
@@ -200,13 +237,13 @@ int MPI_Init(int *argc, char ***argv) {
 
 	//stackStart = *argv;
 
-	/*PMPI_Allreduce(&stackStart, &temp_stackStart, sizeof(address), MPI_BYTE, MPI_BOR, node.rep_mpi_comm_world);
+	PMPI_Allreduce(&stackStart, &temp_stackStart, sizeof(address), MPI_BYTE, MPI_BOR, node.rep_mpi_comm_world);
 
 	if(stackStart != temp_stackStart) {
 		PMPI_Abort(node.rep_mpi_comm_world, 100);
 		exit(2);
 	}
-*/
+
 	debug_log_i("Address Stack new: %p | argv add: %p", stackStart, argv);
 
 	ckpt_bit = does_ckpt_file_exists(ckpt_file);
@@ -1036,6 +1073,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 	// "request" variable will now contain the address of the aggregated request
 	// element instead of MPI_Request.
 	*request = (MPI_Request)agg_req;
+	__request_pending++;
 
 	for(int i=0; i<job_list[dest].worker_count; i++) {
 		//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
@@ -1084,6 +1122,7 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 	// "request" variable will now contain the address of the aggregated request
 	// element instead of MPI_Request.
 	*request = (MPI_Request)agg_req;
+	__request_pending++;
 
 	int worker_count;
 
@@ -1129,9 +1168,12 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 
 int MPI_Wait(MPI_Request *request, MPI_Status *status) {
 	debug_log_i("In MPI_Wait()");
+	acquire_comm_lock();
 	__ignore_process_failure = 1;
 	int s = wait_for_agg_request(*request, status);
+	__request_pending--;
 	__ignore_process_failure = 0;
+	release_comm_lock();
 
 	return s;
 }
