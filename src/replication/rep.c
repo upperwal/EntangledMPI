@@ -20,6 +20,8 @@ extern Malloc_list *head;
 extern int __pass_sender_cont_add;
 extern int __pass_receiver_cont_add;
 
+extern int __request_pending;
+
 /* 
 *  1. Checks for file update pointer from the replication thread.
 *  2. If set, do a setjmp(), MPI_wait_all() and switch to alternate stack.
@@ -29,9 +31,9 @@ int is_file_update_set() {
 	// This function will execute on main user program thread.
 	//printf("Thread: Main | Function: is_file_update_set | newStack Address: %p\n", &newStack);
 
-	if(map_status == MAP_UPDATED) {
+	if(map_status == MAP_UPDATED && __request_pending == 0) {
 		
-		debug_log_i("Map Update: %d", map_status);
+		log_i("Map Update: %d", map_status);
 
 		int s = setjmp(context);
 		if(s == 0) {
