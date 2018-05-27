@@ -66,8 +66,10 @@ int __pass_receiver_cont_add;
 // correct comm in a collective call (happening sometime after this call)
 int __ignore_process_failure;
 
-int mutex_status;
+int mutex_status = 1;
 int global_mutex_status;
+
+int *rank_ignore_list;
 
 extern Malloc_list *head;
 
@@ -100,42 +102,45 @@ void *rep_thread_init(void *_stackHigherAddress) {
 		// Start checking for any map file updates.
 		if(is_file_modified(map_file, &last_update, &ckpt_backup)) {
 			
-			log_i("Inside Modified file");
+			debug_log_i("Inside Modified file");
 
-			parse_map_file(map_file, &job_list, &node, &ckpt_backup);
+			mutex_status = 1;
 
 			while(1) {
 				mutex_status = pthread_mutex_trylock(&comm_use_mutex);
 
 				// while to handle all process failure for MPI_Allgather
-				log_i("All Reduce doing: %d", mutex_status);
+				debug_log_i("All Reduce doing: %d", mutex_status);
 				// TODO [IMPORTANT]: Will not work in case of process failure.
 				PMPI_Allreduce(&mutex_status, &global_mutex_status, 1, MPI_INT, MPI_SUM, node.rep_mpi_comm_world);
-				log_i("All Reduce hogaya: %d", global_mutex_status);
+				debug_log_i("All Reduce hogaya: %d", global_mutex_status);
 				if(global_mutex_status == 0) {
 					// Everyone acquired lock.
-					log_i("BREAKING");
 					break;
 				} else {
-					log_i("No Success: %d", mutex_status);
-					/*if(mutex_status == 0) {
-						
-					}*/
-					pthread_mutex_unlock(&comm_use_mutex);
+					debug_log_i("No Success: %d", mutex_status);
+					if(mutex_status == 0) {
+						pthread_mutex_unlock(&comm_use_mutex);
+						//mutex_status = 1;
+					}
+					
 				}
 				sleep(2);
 			}
-			log_i("Before update %d", global_mutex_status);
+
+			parse_map_file(map_file, &job_list, &node, &ckpt_backup);
+
+			debug_log_i("Before update %d", global_mutex_status);
 			update_comms(); 	// Maybe remove comm_use_mutex locking inside this function.
 
-			log_i("after update comm");
+			debug_log_i("after update comm");
 			
 			if(create_migration_comm(&job_comm, &rep_flag, &ckpt_backup) ) {
 
-				log_i("Just inside cr mig");
+				debug_log_i("Just inside cr mig");
 				
 				pthread_mutex_lock(&rep_time_mutex);
-				log_i("rep_time_mutex locked");
+				debug_log_i("rep_time_mutex locked");
 				
 				map_status = MAP_UPDATED;
 				pthread_mutex_unlock(&comm_use_mutex);
@@ -156,8 +161,8 @@ void *rep_thread_init(void *_stackHigherAddress) {
 				else {
 				
 					// Checkpoint creation
-					/*if(node.node_checkpoint_master == YES)
-						init_ckpt(ckpt_file);*/
+					if(node.node_checkpoint_master == YES)
+						init_ckpt(ckpt_file);
 
 					// Replica creation
 					if(rep_flag)
@@ -182,6 +187,7 @@ void *rep_thread_init(void *_stackHigherAddress) {
 int MPI_Init(int *argc, char ***argv) {
 
 	int ckpt_bit;
+	int thread_level_provided;
 
 	/*if(mcheck(dyn_mem_err_hook) != 0) {
 		log_e("mcheck failed.");
@@ -190,7 +196,7 @@ int MPI_Init(int *argc, char ***argv) {
 		log_i("############# MCHECK USED.");
 	}*/
 
-	PMPI_Init(argc, argv);
+	PMPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &thread_level_provided);
 
 	PMPI_Comm_create_errhandler(rep_errhandler, &ulfm_err_handler);
 	//PMPI_Comm_set_errhandler(MPI_COMM_WORLD, ulfm_err_handler);
@@ -240,6 +246,7 @@ int MPI_Init(int *argc, char ***argv) {
 	PMPI_Allreduce(&stackStart, &temp_stackStart, sizeof(address), MPI_BYTE, MPI_BOR, node.rep_mpi_comm_world);
 
 	if(stackStart != temp_stackStart) {
+		log_e("Stack shift detected. Stack starts from different addresses in some nodes.");
 		PMPI_Abort(node.rep_mpi_comm_world, 100);
 		exit(2);
 	}
@@ -266,14 +273,15 @@ int MPI_Init(int *argc, char ***argv) {
 }
 
 int MPI_Finalize(void) {
+	free(rank_ignore_list);
 	return MPI_Barrier(node.rep_mpi_comm_world);//PMPI_Finalize();
 }
 
 int MPI_Barrier(MPI_Comm comm) {
-	if(comm == MPI_COMM_WORLD) {
+	/*if(comm == MPI_COMM_WORLD) {
 		return PMPI_Barrier(node.rep_mpi_comm_world);
-	}
-	return PMPI_Barrier(comm);
+	}*/
+	return PMPI_Barrier(node.rep_mpi_comm_world);
 }
 
 int MPI_Comm_rank(MPI_Comm comm, int *rank) {
@@ -489,7 +497,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 }
 
 int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
-
+	debug_log_i("In MPI_Bcast()");
 	int mpi_status = MPI_SUCCESS;
 	int flag;
 	int total_trails = 0;
@@ -1044,7 +1052,7 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 
 // Non blocking MPI_I* calls
 
-int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request) {
+/*int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request) {
 	debug_log_i("In MPI_Isend()");
 	is_file_update_set();
 	acquire_comm_lock();
@@ -1068,7 +1076,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 
 	int mpi_status;
 
-	Aggregate_Request *agg_req = new_agg_request();
+	Aggregate_Request *agg_req = new_agg_request(SET_RIGHT_S_BUFFER(buffer));
 
 	// "request" variable will now contain the address of the aggregated request
 	// element instead of MPI_Request.
@@ -1096,7 +1104,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 	release_comm_lock();
 
 	return mpi_status;
-}
+}*/
 
 int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Request *request) {
 	debug_log_i("In MPI_Irecv()");
@@ -1117,7 +1125,7 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 
 	DEFINE_BUFFER(buffer, buf);
 
-	Aggregate_Request *agg_req = new_agg_request();
+	Aggregate_Request *agg_req = new_agg_request((void *)SET_RIGHT_R_BUFFER(buffer), datatype, count);
 
 	// "request" variable will now contain the address of the aggregated request
 	// element instead of MPI_Request.
@@ -1145,9 +1153,10 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 			recv_source = (job_list[source].rank_list)[i];
 		}*/
 
-		MPI_Request *r = add_new_request(agg_req);
+		void *new_buf;
+		MPI_Request *r = add_new_request_and_buffer(agg_req, &new_buf);
 		debug_log_i("*******REQUEST BEFORE: %p | Source: %d", *r, recv_source);
-		mpi_status = PMPI_Irecv(SET_RIGHT_R_BUFFER(buffer), count, datatype, recv_source, tag, *comm_to_use, r);
+		mpi_status = PMPI_Irecv(new_buf, count, datatype, recv_source, tag, *comm_to_use, r);
 		debug_log_i("*******REQUEST AFTER: %p", *r);
 
 		if(mpi_status != MPI_SUCCESS) {

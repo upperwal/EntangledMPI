@@ -2,22 +2,40 @@
 
 extern int *rank_2_job;
 
-Aggregate_Request *new_agg_request() {
+int r_count;
+MPI_Request *arr_request;
+MPI_Status *arr_status;
+
+Aggregate_Request *new_agg_request(void *ori_buf, MPI_Datatype datatype, int count) {
 	Aggregate_Request *agg_req = (Aggregate_Request *)malloc(sizeof(Aggregate_Request));
+
+	int type_size;
+	PMPI_Type_size(datatype, &type_size);
+
 	agg_req->list = NULL;
+	agg_req->buf_list = NULL;
 	agg_req->request_count = 0;
+	agg_req->original_buffer = ori_buf;
+	agg_req->buffer_size = type_size * count;
 
 	return agg_req;
 }
 
-MPI_Request *add_new_request(Aggregate_Request *agg) {
+MPI_Request *add_new_request_and_buffer(Aggregate_Request *agg, void **buf_add) {
 	MPI_Request *request = (MPI_Request *)malloc(sizeof(MPI_Request));
 
 	Request_List *req_list = (Request_List *)malloc(sizeof(Request_List));
 	req_list->req = request;
 	req_list->next = agg->list;
 
+	
+	Buffer_List *buf_list = (Buffer_List *)malloc(sizeof(Buffer_List));
+	buf_list->buf = (void *)malloc(agg->buffer_size);
+	buf_list->next = agg->buf_list;
+	*buf_add = buf_list->buf;
+
 	agg->list = req_list;
+	agg->buf_list = buf_list;
 	agg->request_count++;
 
 	debug_log_i("Request Address Allocation: %p", request);
@@ -33,6 +51,7 @@ int get_request_count(void *agg) {
 
 MPI_Request *get_array_of_request(void *agg, int *size) {
 	Aggregate_Request *agg_req = (Aggregate_Request *)agg;
+	//log_i("AGG Req Add: %p", agg_req);
 
 	*size = agg_req->request_count;
 
@@ -65,13 +84,26 @@ int free_agg_request(void *agg) {
 	Aggregate_Request *agg_req = (Aggregate_Request *)agg;
 
 	Request_List *list = agg_req->list;
-	for(int i=0; i<agg_req->request_count; i++) {
+	Buffer_List *buf_list = agg_req->buf_list;
+	for(int i=1; i<agg_req->request_count; i++) {
+
+		void *list_n = list->next;
+		void *buf_n = buf_list->next;
 
 		free(list->req);
 		free(list);
 
-		if(list->next != NULL)
-			list = list->next;
+		// freeing the buffer will result no place for other internal requests.
+		// This will result in seg fault in MPI_Anywait.
+		// TODO: Find a solution to this. To much memory wastage.
+		//free(buf_list->buf);
+		free(buf_list);
+
+		// should check for both but its fine.
+		if(list_n != NULL) {
+			list = list_n;
+			buf_list = buf_n;
+		}
 	}
 
 	free(agg_req);
@@ -80,9 +112,7 @@ int free_agg_request(void *agg) {
 }
 
 int wait_for_agg_request(void *agg, MPI_Status *status) {
-	int r_count;
-	MPI_Request *arr_request;
-	MPI_Status *arr_status;
+	
 	Aggregate_Request *agg_req = (Aggregate_Request *)agg;
 
 	arr_request = get_array_of_request(agg, &r_count);
@@ -95,8 +125,8 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 	int result;
 
 	if(status == MPI_STATUS_IGNORE) {
-		//result = PMPI_Waitany(r_count, arr_request, &wa_index, status);
-		while(PMPI_Waitall(r_count, arr_request, MPI_STATUSES_IGNORE) != MPI_SUCCESS);
+		while(PMPI_Waitany(r_count, arr_request, &wa_index, status));
+		//while(PMPI_Waitall(r_count, arr_request, MPI_STATUSES_IGNORE) != MPI_SUCCESS);
 
 		free_agg_request(agg);
 		free(arr_request);
@@ -104,16 +134,25 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 		return MPI_SUCCESS;
 	}
 	else {
-		arr_status = (MPI_Status *)malloc(sizeof(MPI_Status) * r_count);
+		//arr_status = (MPI_Status *)malloc(sizeof(MPI_Status) * r_count);
 
 		//PMPI_Wait(arr_request, arr_status);
-		while(PMPI_Waitall(r_count, arr_request, arr_status) != MPI_SUCCESS);
-		//MPI_Status wa_status;
-		//result = PMPI_Waitany(r_count, arr_request, &wa_index, &wa_status);
+
+		// MPI_Waitall is giving some wierd seg fault. 
+		//while(PMPI_Waitall(r_count, arr_request, arr_status) != MPI_SUCCESS);
+		
+		MPI_Status wa_status;
+
+		// because we are ignoring process failure in send/recv
+		// if a process failure occur below function will go crazy. Err handler will
+		// be invoked again and again.
+		// Could be optimized by correcting the job map and sending data to only alive nodes.
+		// Other possibility would be to create an ignore map. Which include all failed nodes.
+		while(PMPI_Waitany(r_count, arr_request, &wa_index, &wa_status));
 
 		// TODO: Need to update the MPI_SOURCE 
 		// Current implementation will send the original rank and not the job no.
-		for(int i=0; i<r_count; i++) {
+		/*for(int i=0; i<r_count; i++) {
 			if(arr_status[i].MPI_ERROR != MPI_SUCCESS) {
 				(*status).MPI_SOURCE = rank_2_job[arr_status[i].MPI_SOURCE];
 				(*status).MPI_TAG = arr_status[i].MPI_TAG;
@@ -121,22 +160,33 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 
 				return MPI_SUCCESS;
 			}
-		}
+		}*/
 
 		// TODO: IMPORTANT
 		// What if nodes associated with arr_status[0] dies?
 		// What happens then?
 
-		*status = arr_status[0];
-		(*status).MPI_SOURCE = rank_2_job[arr_status[0].MPI_SOURCE];
+		/**status = arr_status[0];
+		(*status).MPI_SOURCE = rank_2_job[arr_status[0].MPI_SOURCE];*/
 
-		//*status = wa_status;
-		//(*status).MPI_SOURCE = rank_2_job[wa_status.MPI_SOURCE];
+		Buffer_List *source_buf = agg_req->buf_list;
+		for(int i=0; i<wa_index; i++) {
+			source_buf = source_buf->next;
+		}
 
+		*status = wa_status;
+		(*status).MPI_SOURCE = rank_2_job[wa_status.MPI_SOURCE];
+
+		//log_i("Address: %p | %p", agg_req->original_buffer, source_buf->buf);
+		void *ori_buf = agg_req->original_buffer;
+		memcpy(agg_req->original_buffer, source_buf->buf, agg_req->buffer_size);
+
+		// clean the mess.
 		free_agg_request(agg);
 		free(arr_request);
 
-		return result;
+		// TODO: Return proper success from MPI_* function.
+		return MPI_SUCCESS;
 	}
 	
 }
