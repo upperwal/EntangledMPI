@@ -118,6 +118,8 @@ void init_ckpt_restore(char *file_name) {
 	restore_framework_data();
 
 	fclose(ckpt_file);
+
+	log_i("Finished Ckpt Restore");
 }
 
 void restore_data_seg() {
