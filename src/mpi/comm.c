@@ -10,14 +10,20 @@ extern MPI_Errhandler ulfm_err_handler;
 
 extern pthread_mutex_t comm_use_mutex;
 
+extern int *rank_ignore_list;
+
 int init_node(char *file_name, Job **job_list, Node *node) {
 	
-	int my_rank;
+	int my_rank, comm_size;
 	PMPI_Comm_rank((*node).rep_mpi_comm_world, &my_rank);
+	PMPI_Comm_size((*node).rep_mpi_comm_world, &comm_size);
 
 	// Remember to update this rank after migration.
 	(*node).rank = my_rank; 			
 	(*node).static_rank = my_rank;		// This won't change
+
+	// Allocating memory for rank ignore list.
+	rank_ignore_list = (int *)malloc(sizeof(int) * comm_size);
 
 	debug_log_i("Initiating Node and Jobs data from file.");
 
@@ -145,9 +151,9 @@ void update_comms() {
 	int color = 0, rank_key = node.job_id;
 
 	// Explain
-	debug_log_i("Before Lock...");
+	/*debug_log_i("Before Lock...");
 	pthread_mutex_lock(&comm_use_mutex);
-	debug_log_i("After Lock...");
+	debug_log_i("After Lock...");*/
 
 	// Although misguiding 'node.node_checkpoint_master' is not just used to mark a node
 	// which takes checkpoint on behalf of a job but it is also used to do communications
@@ -183,7 +189,7 @@ void update_comms() {
 	PMPI_Comm_split(node.rep_mpi_comm_world, color, rank_key, &(node.world_job_comm));
 	//PMPI_Comm_set_errhandler(node.world_job_comm, ulfm_err_handler);
 
-	pthread_mutex_unlock(&comm_use_mutex);
+	//pthread_mutex_unlock(&comm_use_mutex);
 
 	// Test
 	PMPI_Comm_rank(node.world_job_comm, &rank);
@@ -213,7 +219,7 @@ int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ck
 	}
 
 	// TODO: Comm was getting corrupted (review this)
-	pthread_mutex_lock(&comm_use_mutex);
+	//pthread_mutex_lock(&comm_use_mutex);
 
 	if(node.node_transit_state != NODE_DATA_NONE) {
 		color = node.job_id;
@@ -238,7 +244,7 @@ int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ck
 
 	PMPI_Comm_split(node.rep_mpi_comm_world, color, key, job_comm);
 
-	pthread_mutex_unlock(&comm_use_mutex);
+	//pthread_mutex_unlock(&comm_use_mutex);
 
 	debug_log_i("Create Migration Comm: flag: %d | ckpt master: %d", flag, node.node_checkpoint_master);
 	

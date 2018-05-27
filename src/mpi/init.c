@@ -317,6 +317,9 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 	int mpi_status;
 
 	for(int i=0; i<job_list[dest].worker_count; i++) {
+		if(rank_ignore_list[ (job_list[dest].rank_list)[i] ] == 1) {
+			continue;
+		}
 		//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
 		debug_log_i("SEND: Data: %d to %d", *((int *)buf), (job_list[dest].rank_list)[i]);
 		mpi_status = PMPI_Send(SET_RIGHT_S_BUFFER(buffer), count, datatype, (job_list[dest].rank_list)[i], tag, *comm_to_use);
@@ -375,6 +378,10 @@ int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, M
 	DEFINE_BUFFER(buffer, buf);
 
 	for(int i=0; i<job_list[source].worker_count; i++) {
+		if(rank_ignore_list[ (job_list[source].rank_list)[i] ] == 1) {
+			continue;
+		}
+
 		mpi_status = PMPI_Recv(SET_RIGHT_R_BUFFER(buffer), count, datatype, (job_list[source].rank_list)[i], tag, *comm_to_use, status);
 
 		if(mpi_status != MPI_SUCCESS) {
@@ -1153,6 +1160,10 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 			recv_source = (job_list[source].rank_list)[i];
 		}*/
 
+		if(recv_source != MPI_ANY_SOURCE && rank_ignore_list[ recv_source ] == 1) {
+			continue;
+		}
+
 		void *new_buf;
 		MPI_Request *r = add_new_request_and_buffer(agg_req, &new_buf);
 		debug_log_i("*******REQUEST BEFORE: %p | Source: %d", *r, recv_source);
@@ -1179,7 +1190,8 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status) {
 	debug_log_i("In MPI_Wait()");
 	acquire_comm_lock();
 	__ignore_process_failure = 1;
-	int s = wait_for_agg_request(*request, status);
+	void *internal_request = (0x00000000ffffffff & (unsigned)(*request));
+	int s = wait_for_agg_request(internal_request, status);
 	__request_pending--;
 	__ignore_process_failure = 0;
 	release_comm_lock();
