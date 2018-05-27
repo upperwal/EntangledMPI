@@ -33,7 +33,7 @@ int is_file_update_set() {
 
 	if(map_status == MAP_UPDATED && __request_pending == 0) {
 		
-		log_i("Map Update: %d", map_status);
+		debug_log_i("Map Update: %d", map_status);
 
 		int s = setjmp(context);
 		if(s == 0) {

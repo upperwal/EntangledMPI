@@ -3,7 +3,7 @@
 #include "src/replication/rep.h"
 
 #define SMALL_BUF_SIZE 10
-#define SLEEP_TIME 0
+#define SLEEP_TIME 2
 
 float *big_buffer;
 float *small_buffer;

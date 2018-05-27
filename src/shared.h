@@ -7,7 +7,7 @@
 #ifndef __SHARED_H__
 #define __SHARED_H__
 
-#define DEBUG
+#define DEBUGG
 
 // Map is a file or API response which maps compute node to a replica node. If the
 // hash of the file/API is changed MAP_UPDATED status is used.
