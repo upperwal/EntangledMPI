@@ -23,7 +23,7 @@ void mpi_finalize_(MPI_Fint *ierr) {
 	debug_log_i("[Fortran] MPI_Finalize");
 }
 
-void mpi_barrier_(MPI_Fint *comm, MPI_Fint *ierr) {
+/*void mpi_barrier_(MPI_Fint *comm, MPI_Fint *ierr) {
     int ierr_c;
     MPI_Comm c_comm;
 
@@ -31,7 +31,7 @@ void mpi_barrier_(MPI_Fint *comm, MPI_Fint *ierr) {
 
     ierr_c = MPI_Barrier(c_comm);
     //if (NULL != ierr) *ierr = OMPI_INT_2_FINT(ierr_c);
-}
+}*/
 
 void mpi_comm_rank_(MPI_Fint *comm, MPI_Fint *rank, MPI_Fint *ierr) {
 	int c_ierr;
@@ -191,5 +191,5 @@ void mpi_wait_(MPI_Fint *request, MPI_Fint *status, MPI_Fint *ierr) {
     MPI_Status  c_status;
 
     c_ierr = MPI_Wait(&c_req, &c_status);
-    if (NULL != ierr) *ierr = c_ierr;
+    //if (NULL != ierr) *ierr = c_ierr;
 }
