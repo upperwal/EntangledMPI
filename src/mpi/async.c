@@ -5,6 +5,7 @@ extern int *rank_2_job;
 int r_count;
 MPI_Request *arr_request;
 MPI_Status *arr_status;
+MPI_Status wa_status;
 
 Aggregate_Request *new_agg_request(void *ori_buf, MPI_Datatype datatype, int count) {
 	Aggregate_Request *agg_req = (Aggregate_Request *)malloc(sizeof(Aggregate_Request));
@@ -117,7 +118,8 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 
 	arr_request = get_array_of_request(agg, &r_count);
 
-	if(r_count == 0) {
+	if(r_count == 0 || arr_request == NULL) {
+		log_e("arr_request is NULL");
 		return MPI_SUCCESS;
 	}
 
@@ -141,14 +143,26 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 		// MPI_Waitall is giving some wierd seg fault. 
 		//while(PMPI_Waitall(r_count, arr_request, arr_status) != MPI_SUCCESS);
 		
-		MPI_Status wa_status;
+		
 
 		// because we are ignoring process failure in send/recv
 		// if a process failure occur below function will go crazy. Err handler will
 		// be invoked again and again.
 		// Could be optimized by correcting the job map and sending data to only alive nodes.
 		// Other possibility would be to create an ignore map. Which include all failed nodes.
-		while(PMPI_Waitany(r_count, arr_request, &wa_index, &wa_status));
+		// Added an ignore map.
+		int wstatus = PMPI_Waitany(r_count, arr_request, &wa_index, &wa_status);
+
+		// TODO: while loop around PMPI_Waitany
+		if(wstatus != MPI_SUCCESS) {
+			log_i("waitany failed");
+
+			wstatus = PMPI_Waitany(r_count, arr_request, &wa_index, &wa_status);
+			if(wstatus != MPI_SUCCESS)
+				PMPI_Abort(MPI_COMM_WORLD, 400);
+
+			log_i("Done wait any");
+		}
 
 		// TODO: Need to update the MPI_SOURCE 
 		// Current implementation will send the original rank and not the job no.
@@ -182,8 +196,8 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 		memcpy(agg_req->original_buffer, source_buf->buf, agg_req->buffer_size);
 
 		// clean the mess.
-		free_agg_request(agg);
-		free(arr_request);
+		//free_agg_request(agg);
+		//free(arr_request);
 
 		// TODO: Return proper success from MPI_* function.
 		return MPI_SUCCESS;
