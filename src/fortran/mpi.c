@@ -179,16 +179,25 @@ void mpi_irecv_(char *buf, MPI_Fint *count, MPI_Fint *datatype, MPI_Fint *source
     c_ierr = MPI_Irecv(buf, *count, c_type, *source, *tag, c_comm, &c_req);
     if (NULL != ierr) *ierr = c_ierr;
 
-    if (MPI_SUCCESS == c_ierr) {
-      *request = c_req;
-    }
+    /*if (MPI_SUCCESS == c_ierr) {
+      
+
+    }*/
+    memcpy(request, &c_req, sizeof(void *));
+    // Doing "*request = c_req" could result in seg fault as sizeof(c_req) = 8 bytes and 
+    // sizeof(*request) = 4 bytes (c int). 
+    //*request = c_req;
     debug_log_i("*request: %p | c_req: %p", *request, c_req);
 }
 
 void mpi_wait_(MPI_Fint *request, MPI_Fint *status, MPI_Fint *ierr) {
     int c_ierr;
-    MPI_Request c_req = *request;
+    MPI_Request c_req;
     MPI_Status  c_status;
+
+    // request is of type int (MPI_Fint) i.e. size 4 bytes
+    // but c_req is of size 8 bytes. Direct allocation would result in seg fault.
+    memcpy(&c_req, request, sizeof(void *));
 
     c_ierr = MPI_Wait(&c_req, &c_status);
     //if (NULL != ierr) *ierr = c_ierr;
