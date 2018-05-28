@@ -73,6 +73,8 @@ int *rank_ignore_list;
 
 extern Malloc_list *head;
 
+void *___temp_add;
+
 void __attribute__((constructor)) calledFirst(void)
 {	
 	int a;
@@ -318,6 +320,7 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 
 	for(int i=0; i<job_list[dest].worker_count; i++) {
 		if(rank_ignore_list[ (job_list[dest].rank_list)[i] ] == 1) {
+			log_i("Ignored rank : %d", (job_list[dest].rank_list)[i]);
 			continue;
 		}
 		//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
@@ -1133,7 +1136,7 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 	DEFINE_BUFFER(buffer, buf);
 
 	Aggregate_Request *agg_req = new_agg_request((void *)SET_RIGHT_R_BUFFER(buffer), datatype, count);
-
+	___temp_add = (void *)agg_req;
 	// "request" variable will now contain the address of the aggregated request
 	// element instead of MPI_Request.
 	*request = (MPI_Request)agg_req;
@@ -1161,6 +1164,7 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 		}*/
 
 		if(recv_source != MPI_ANY_SOURCE && rank_ignore_list[ recv_source ] == 1) {
+			log_i("Ignored rank : %d", recv_source);
 			continue;
 		}
 
@@ -1190,7 +1194,8 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status) {
 	debug_log_i("In MPI_Wait()");
 	acquire_comm_lock();
 	__ignore_process_failure = 1;
-	void *internal_request = (0x00000000ffffffff & (unsigned)(*request));
+	//void *internal_request = (0x00000000ffffffff & (unsigned)(*request));
+	void *internal_request = *request;
 	int s = wait_for_agg_request(internal_request, status);
 	__request_pending--;
 	__ignore_process_failure = 0;
