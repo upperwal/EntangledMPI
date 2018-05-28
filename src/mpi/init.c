@@ -71,9 +71,79 @@ int global_mutex_status;
 
 int *rank_ignore_list;
 
+int __process_shrinking_pending;
+
 extern Malloc_list *head;
 
 void *___temp_add;
+
+// Common function logic for collective MPI_* functions
+
+#define DECLARE_VARS()															\
+	int mpi_status = MPI_SUCCESS;												\
+	int flag;																	\
+	int total_trails = 0;														\
+	MPI_Comm *comm_to_use;														\
+	enum NodeCheckpointMaster ckpt_master_backup;		
+
+#define ACTIVATE_COMM_AND_BKUP_MASTER() 										\
+	if(comm == MPI_COMM_WORLD) {												\
+		comm_to_use = &(node.rep_mpi_comm_world);								\
+	}																			\
+	ckpt_master_backup = node.node_checkpoint_master;
+
+#define TRIAL_INC_AND_CHECK()													\
+	total_trails++;																\
+	if(total_trails >= NO_TRIALS) {												\
+		log_e("Total Trails exceeds. Aborting.");								\
+		PMPI_Abort(node.rep_mpi_comm_world, 10);								\
+	}
+
+#define SET_FLAG_ON_SUCCESS()													\
+	if(MPI_SUCCESS == mpi_status) {												\
+		flag = -1;																\
+	}
+
+// What if all the compute nodes died.
+// value of flag = MPI_SUCCESS and comm_agree
+// will return same values
+// change in node_checkpoint_master means that
+// this node is made master recently.
+// Hence PMPI_Reduce did not succeed.
+#define DO_COMM_AGREE()															\
+	while(MPI_SUCCESS != MPI_Comm_agree(*comm_to_use, &flag)) {					\
+		debug_log_i("Comm Agree Failed");										\
+		if(ckpt_master_backup != node.node_checkpoint_master) {					\
+			flag = node.static_rank;											\
+			ckpt_master_backup = node.node_checkpoint_master;					\
+		}																		\
+	}
+
+#define IF_OPERATION_FAILED_ELSE(msg, el) 										\
+	if(flag != -1) {															\
+		debug_log_i(msg);														\
+		continue;																\
+	}																			\
+	else {																		\
+		el 																		\
+	}
+
+#define CONTINUE_TILL_SUCCESS() 												\
+	while(flag != -1)
+
+// If failed node is root node in node.world_job_comm, data is lost 
+// and main operation needs to be done again before doing bcast.
+#define HANDLE_FAILURE_ON_JOB_COMM(msg)											\
+	debug_log_i("[Value flag]: %d", flag);										\
+	if(flag != -1) {															\
+		debug_log_i(msg);										\
+		if(is_failed_node_world_job_comm_root()) {								\
+			debug_log_i("root node died. Doing main communication again");		\
+			break;																\
+		}																		\
+	}
+
+// END of common logic for collective calls
 
 void __attribute__((constructor)) calledFirst(void)
 {	
@@ -248,7 +318,7 @@ int MPI_Init(int *argc, char ***argv) {
 	PMPI_Allreduce(&stackStart, &temp_stackStart, sizeof(address), MPI_BYTE, MPI_BOR, node.rep_mpi_comm_world);
 
 	if(stackStart != temp_stackStart) {
-		log_e("Stack shift detected. Stack starts from different addresses in some nodes.");
+		log_e("Stack shift detected. Stack starts from different addresses in some nodes: %p", stackStart);
 		PMPI_Abort(node.rep_mpi_comm_world, 100);
 		exit(2);
 	}
@@ -320,7 +390,6 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 
 	for(int i=0; i<job_list[dest].worker_count; i++) {
 		if(rank_ignore_list[ (job_list[dest].rank_list)[i] ] == 1) {
-			log_i("Ignored rank : %d", (job_list[dest].rank_list)[i]);
 			continue;
 		}
 		//printf("[Rank: %d] Job List: %d\n", node.rank, (job_list[dest].rank_list)[i]);
@@ -448,7 +517,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 
 		// To correct the comms
 		// why "while"? check MPI_Bcast.
-		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		while(MPI_SUCCESS != MPI_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
 			//flag = 0;
 			//continue;
@@ -476,7 +545,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 				flag = (MPI_SUCCESS == mpi_status);
 				
 				// To correct the comms
-				while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag));
+				while(MPI_SUCCESS != MPI_Comm_agree(*comm_to_use, &flag));
 				// To perform agree on flag
 				//PMPIX_Comm_agree(comm_to_use, &flag);
 
@@ -507,7 +576,7 @@ int MPI_Scatter(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void 
 }
 
 int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
-	debug_log_i("In MPI_Bcast()");
+	log_i("In MPI_Bcast()");
 	int mpi_status = MPI_SUCCESS;
 	int flag;
 	int total_trails = 0;
@@ -547,7 +616,7 @@ int MPI_Bcast(void *buf, int count, MPI_Datatype datatype, int root, MPI_Comm co
 		// while loop should only run twice:
 		//  1. To correct (shrink) the comm incase of failure
 		//  2. To agree on flag value
-		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		while(MPI_SUCCESS != MPI_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
 			//flag = 0;
 			//continue; 	// This was a bad idea
@@ -629,7 +698,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 		flag = (MPI_SUCCESS == mpi_status);
 
 		// To correct the comms
-		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		while(MPI_SUCCESS != MPI_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
 			//flag = 0;
 			//continue;
@@ -655,7 +724,7 @@ int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *
 				flag = (MPI_SUCCESS == mpi_status);
 				
 				// To correct the comms
-				while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag));
+				while(MPI_SUCCESS != MPI_Comm_agree(*comm_to_use, &flag));
 				// To perform agree on flag
 				//PMPIX_Comm_agree(comm_to_use, &flag);	// TODO: Is this call even required?
 
@@ -750,7 +819,7 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 		flag = (MPI_SUCCESS == mpi_status);
 
 		// To correct the comms
-		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		while(MPI_SUCCESS != MPI_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
 			//flag = 0;
 			//continue;
@@ -776,7 +845,7 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 				flag = (MPI_SUCCESS == mpi_status);
 				
 				// To correct the comms
-				while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag));
+				while(MPI_SUCCESS != MPI_Comm_agree(*comm_to_use, &flag));
 				// To perform agree on flag
 				//PMPIX_Comm_agree(comm_to_use, &flag);
 
@@ -845,12 +914,9 @@ int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, voi
 }
 
 int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm) {
+	debug_log_i("In MPI_Reduce()");
 	
-	debug_log_i("MPI_Reduce Call");
-	int mpi_status = MPI_SUCCESS;
-	int flag;
-	int total_trails = 0;
-	MPI_Comm *comm_to_use;
+	DECLARE_VARS()
 
 	is_file_update_set();
 	acquire_comm_lock();
@@ -858,45 +924,27 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 	DEFINE_BUFFER(sbuffer, sendbuf);
 	DEFINE_BUFFER(rbuffer, recvbuf);
 
-	if(comm == MPI_COMM_WORLD) {
-		comm_to_use = &(node.rep_mpi_comm_world);
-	}
+	ACTIVATE_COMM_AND_BKUP_MASTER()
 
 	do {
 
-		total_trails++;
-
-		if(total_trails >= NO_TRIALS) {
-			log_e("Total Trails exceeds. Aborting.");
-			PMPI_Abort(node.rep_mpi_comm_world, 10);
-		}
+		TRIAL_INC_AND_CHECK()
 
 		if(node.active_comm != MPI_COMM_NULL) {
 			mpi_status = PMPI_Reduce(SET_RIGHT_S_BUFFER(sbuffer), SET_RIGHT_R_BUFFER(rbuffer), count, datatype, op, root, node.active_comm);
 		}
 
-		flag = (MPI_SUCCESS == mpi_status);
+		SET_FLAG_ON_SUCCESS()
 
 		// To correct the comms
-		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
-			debug_log_i("First Comm agree");
-			//flag = 0;
-			//continue;
-		}
-		// To perform agree on flag
-		//PMPIX_Comm_agree(*comm_to_use, &flag);
+		// Err handler will be called even if replica node dies
+		// Could be optimized by not shrinking if replica node is dead.
+		DO_COMM_AGREE()
 
-		if(!flag) {
-			debug_log_i("MPI_Reduce Failed");
-			flag = 0;
-			continue;
-		}
-		else {
-
-			/*if(node.rank == 1)
-				raise(SIGKILL);*/
+		IF_OPERATION_FAILED_ELSE("MPI_Reduce Failed", 
 			
 			do {
+				
 				if(node.job_id == root) {
 					debug_log_i("Doing Bcast");
 					mpi_status = PMPI_Bcast(SET_RIGHT_R_BUFFER(rbuffer), count, datatype, 0, node.world_job_comm);
@@ -905,40 +953,23 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 				else {
 					mpi_status = MPI_SUCCESS;
 				}
-				flag = (MPI_SUCCESS == mpi_status);
+				
+				SET_FLAG_ON_SUCCESS()
 				
 				// To correct the comms
-				while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag));
-				// To perform agree on flag
-				//PMPIX_Comm_agree(*comm_to_use, &flag);
+				DO_COMM_AGREE()
 
-				debug_log_i("[Value flag]: %d", flag);
-				if(!flag) {
-					debug_log_i("MPI_Bcast Failed");
+				HANDLE_FAILURE_ON_JOB_COMM("MPI_Bcast Failed")
 
-					// If failed node is root node in node.world_job_comm, data is lost 
-					// and main operation needs to be done again before doing bcast.
-					if(is_failed_node_world_job_comm_root()) {
-						debug_log_i("node.world_job_comm root node died. Doing main communication again");
-						flag = 0;
-						break;
-					}
-				}
-
-			} while(!flag);
-			
-		}
-
+			} CONTINUE_TILL_SUCCESS();
 		
+		)
 
-	} while(!flag);
+	} CONTINUE_TILL_SUCCESS();
 
 	release_comm_lock();
 
 	return MPI_SUCCESS;
-
-
-
 
 	/*if(node.active_comm != MPI_COMM_NULL) {
 		PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, node.active_comm);
@@ -990,7 +1021,7 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 		flag = (MPI_SUCCESS == mpi_status);
 
 		// To correct the comms
-		while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag)) {
+		while(MPI_SUCCESS != MPI_Comm_agree(*comm_to_use, &flag)) {
 			debug_log_i("First Comm agree");
 			//flag = 0;
 			//continue;
@@ -1016,7 +1047,7 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 				flag = (MPI_SUCCESS == mpi_status);
 				
 				// To correct the comms
-				while(MPI_SUCCESS != PMPIX_Comm_agree(*comm_to_use, &flag));
+				while(MPI_SUCCESS != MPI_Comm_agree(*comm_to_use, &flag));
 				// To perform agree on flag
 				//PMPIX_Comm_agree(*comm_to_use, &flag);
 
@@ -1164,7 +1195,6 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 		}*/
 
 		if(recv_source != MPI_ANY_SOURCE && rank_ignore_list[ recv_source ] == 1) {
-			log_i("Ignored rank : %d", recv_source);
 			continue;
 		}
 
@@ -1202,4 +1232,17 @@ int MPI_Wait(MPI_Request *request, MPI_Status *status) {
 	release_comm_lock();
 
 	return s;
+}
+
+// Rewriting ULFM functions
+
+int MPI_Comm_agree(MPI_Comm comm, int* flag) {
+	if(__process_shrinking_pending) {
+		int err_code = PROC_SHRINK_PENDING;
+		rep_errhandler(&(node.rep_mpi_comm_world), &err_code);
+		__process_shrinking_pending = 0;
+		return (MPI_SUCCESS + 12);
+	}
+
+	return PMPIX_Comm_agree(comm, flag);
 }
