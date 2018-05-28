@@ -23,7 +23,7 @@ int init_node(char *file_name, Job **job_list, Node *node) {
 	(*node).static_rank = my_rank;		// This won't change
 
 	// Allocating memory for rank ignore list.
-	rank_ignore_list = (int *)malloc(sizeof(int) * comm_size);
+	rank_ignore_list = (int *)calloc(comm_size, sizeof(int));
 
 	debug_log_i("Initiating Node and Jobs data from file.");
 
