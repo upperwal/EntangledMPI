@@ -41,7 +41,7 @@ func main() {
 		ImageToKill: selector.KILL_ANY,
 	}
 	opt.KillEvenIfNotReplicated = *killNonRep
-	selec, _ := selector.NewSelector(*repFile, grng, 3 * time.Second, 1 * time.Second, opt)
+	selec, _ := selector.NewSelector(*repFile, grng, 20 * time.Second, 4 * time.Second, opt)
 
 	a, _ := selec.NextN(*nRank)
 
