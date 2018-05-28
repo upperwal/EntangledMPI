@@ -8,6 +8,8 @@ extern int __ignore_process_failure;
 
 extern int *rank_ignore_list;
 
+extern int __process_shrinking_pending;
+
 MPI_Group last_group_failed;	// This is the group of nodes which failed recently.
 MPI_Group previous_world_group;
 
@@ -56,8 +58,14 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
     
     int err = *perr, eclass, compare_result, err_len;
     char err_string[100];
+    int is_proc_shrinking_pending;
 
-	PMPI_Error_class(err, &eclass);
+    if(*perr == PROC_SHRINK_PENDING) {
+    	eclass = MPIX_ERR_PROC_FAILED;
+    }
+    else {
+    	PMPI_Error_class(err, &eclass);
+    }
 
 	log_i("Comm: %p | world: %p | Error: %d | Is W: %d | J: %d | A: %d", *pcomm, node.rep_mpi_comm_world, eclass == MPIX_ERR_PROC_FAILED, *pcomm == node.rep_mpi_comm_world, *pcomm == node.world_job_comm, *pcomm == node.active_comm);
 
@@ -69,7 +77,7 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
 
 	PMPI_Comm_compare(*pcomm, node.rep_mpi_comm_world, &compare_result);
 	debug_log_i("MPI_IDENT: %d | MPI_CONGRUENT: %d | MPI_SIMILAR: %d | MPI_UNEQUAL: %d", MPI_IDENT == compare_result, MPI_CONGRUENT == compare_result, MPI_SIMILAR == compare_result, MPI_UNEQUAL == compare_result);
-	if(*pcomm == node.rep_mpi_comm_world && MPIX_ERR_PROC_FAILED == eclass && !__ignore_process_failure) {
+	if( *pcomm == node.rep_mpi_comm_world && MPIX_ERR_PROC_FAILED == eclass && !__ignore_process_failure ) {
 
 		int *rank_arr_group_world_dup, *rank_arr_group_world_shrinked;
 		int size;
@@ -121,6 +129,8 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
 		free(rank_arr_group_world_shrinked);
 	}
 	else {
+		// TODO: Incase all nodes die in a job
+		// check that and abort.
 		if(*pcomm == node.rep_mpi_comm_world) {
 			// Creating an ignore map.
 			int size;
@@ -129,6 +139,8 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
 
 			PMPIX_Comm_failure_ack(node.rep_mpi_comm_world);
 	    	PMPIX_Comm_failure_get_acked(node.rep_mpi_comm_world, &last_group_failed);
+
+	    	__process_shrinking_pending = 1;
 
 	    	PMPI_Comm_group(node.rep_mpi_comm_world, &group_world_dup);
 
@@ -139,6 +151,8 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
 	    	for(int i=0; i<size; i++) {
 				rank_arr_group_world_dup[i] = i;
 			}
+
+			log_i("world_comm: %d", *pcomm == node.rep_mpi_comm_world);
 
 	    	PMPI_Group_translate_ranks(last_group_failed, size, rank_arr_group_world_dup, group_world_dup, rank_failed_nodes);
 		
@@ -206,6 +220,7 @@ int is_failed_node_world_job_comm_root() {
 
     //PMPI_Comm_group(node.rep_mpi_comm_world, &group_world);
 
+    // TODO: free them
     rank_failed_group = malloc(sizeof(int) * failed_group_size);
     rank_world_comm = malloc(sizeof(int) * failed_group_size);
 

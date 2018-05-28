@@ -13,6 +13,8 @@
 #ifndef __ULFM_H__
 #define __ULFM_H__
 
+#define PROC_SHRINK_PENDING 65667273
+
 void rep_errhandler(MPI_Comm*, int*, ...);
 
 void update_job_list(int, int *);
