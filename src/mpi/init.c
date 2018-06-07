@@ -77,6 +77,8 @@ extern Malloc_list *head;
 
 void *___temp_add;
 
+void *__blackhole_address;
+
 // Common function logic for collective MPI_* functions
 
 #define DECLARE_VARS()															\
@@ -315,13 +317,13 @@ int MPI_Init(int *argc, char ***argv) {
 
 	//stackStart = *argv;
 
-	PMPI_Allreduce(&stackStart, &temp_stackStart, sizeof(address), MPI_BYTE, MPI_BOR, node.rep_mpi_comm_world);
+	/*PMPI_Allreduce(&stackStart, &temp_stackStart, sizeof(address), MPI_BYTE, MPI_BOR, node.rep_mpi_comm_world);
 
 	if(stackStart != temp_stackStart) {
 		log_e("Stack shift detected. Stack starts from different addresses in some nodes: %p", stackStart);
 		PMPI_Abort(node.rep_mpi_comm_world, 100);
 		exit(2);
-	}
+	}*/
 
 	debug_log_i("Address Stack new: %p | argv add: %p", stackStart, argv);
 
@@ -333,6 +335,9 @@ int MPI_Init(int *argc, char ***argv) {
 
 	// Save hostname of this host for process manager and fault injector.
 	network_stat_init(network_stat_file);
+
+	// Init blackhole
+	__blackhole_address = malloc(sizeof(char) * 10000000);
 
 	pthread_t tid;
 	pthread_create(&tid, NULL, rep_thread_init, stackStart);
@@ -346,6 +351,7 @@ int MPI_Init(int *argc, char ***argv) {
 
 int MPI_Finalize(void) {
 	free(rank_ignore_list);
+	free(__blackhole_address);
 	return MPI_Barrier(node.rep_mpi_comm_world);//PMPI_Finalize();
 }
 
@@ -1179,9 +1185,11 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 		// Very tricky to set.
 		// If less and user sends more MPI_Send it will block the program.
 		// TODO: Find a better solution for MPI_ANY_SOURCE
-		worker_count = 2;
+		worker_count = 1;
+		agg_req->async_type = ANY_RECV;
 	} else {
 		worker_count = job_list[source].worker_count;
+		agg_req->async_type = NONE;
 	}
 
 	for(int i=0; i<worker_count; i++) {

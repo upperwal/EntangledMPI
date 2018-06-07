@@ -19,12 +19,17 @@ typedef struct {
 	struct Buffer_List *next;
 } Buffer_List;
 
+typedef enum Async_Type { NONE, ANY_SEND, ANY_RECV, IRECV } Async_Type;
+
 typedef struct {
 	int request_count;
 	Request_List *list;
 	Buffer_List *buf_list;
 	void *original_buffer;
 	int buffer_size;
+	Async_Type async_type;
+	int tag;
+
 } Aggregate_Request;
 
 Aggregate_Request *new_agg_request(void *, MPI_Datatype, int);

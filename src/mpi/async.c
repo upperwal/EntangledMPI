@@ -2,6 +2,11 @@
 
 extern int *rank_2_job;
 
+extern Node node;
+extern Job *job_list;
+
+extern void *__blackhole_address;
+
 int r_count;
 MPI_Request *arr_request;
 MPI_Status *arr_status;
@@ -117,13 +122,14 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 	Aggregate_Request *agg_req = (Aggregate_Request *)agg;
 
 	arr_request = get_array_of_request(agg, &r_count);
+	MPI_Request blackhole_request;
 
 	if(r_count == 0 || arr_request == NULL) {
 		log_e("arr_request is NULL");
 		return MPI_SUCCESS;
 	}
 
-	int wa_index;
+	int wa_index = 0;
 	int result;
 
 	if(status == MPI_STATUS_IGNORE) {
@@ -136,7 +142,7 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 		return MPI_SUCCESS;
 	}
 	else {
-		//arr_status = (MPI_Status *)malloc(sizeof(MPI_Status) * r_count);
+		arr_status = (MPI_Status *)malloc(sizeof(MPI_Status) * r_count);
 
 		//PMPI_Wait(arr_request, arr_status);
 
@@ -151,10 +157,22 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 		// Could be optimized by correcting the job map and sending data to only alive nodes.
 		// Other possibility would be to create an ignore map. Which include all failed nodes.
 		// Added an ignore map.
-		int wstatus = PMPI_Waitany(r_count, arr_request, &wa_index, &wa_status);
+		//int wstatus = PMPI_Waitany(r_count, arr_request, &wa_index, &wa_status);
+		int wstatus = PMPI_Waitall(r_count, arr_request, arr_status);
+
+		if(wstatus != MPI_SUCCESS) {
+			log_i("waitany failed");
+
+			wstatus = PMPI_Waitall(r_count, arr_request, arr_status);
+			if(wstatus != MPI_SUCCESS)
+			       PMPI_Abort(MPI_COMM_WORLD, 400);
+
+			log_i("Done wait any");
+		}
+
 
 		// TODO: while loop around PMPI_Waitany
-		if(wstatus != MPI_SUCCESS) {
+		/*if(wstatus != MPI_SUCCESS) {
 			log_i("waitany failed");
 
 			wstatus = PMPI_Waitany(r_count, arr_request, &wa_index, &wa_status);
@@ -162,11 +180,11 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 				PMPI_Abort(MPI_COMM_WORLD, 400);
 
 			log_i("Done wait any");
-		}
+		}*/
 
 		// TODO: Need to update the MPI_SOURCE 
 		// Current implementation will send the original rank and not the job no.
-		/*for(int i=0; i<r_count; i++) {
+		for(int i=0; i<r_count; i++) {
 			if(arr_status[i].MPI_ERROR != MPI_SUCCESS) {
 				(*status).MPI_SOURCE = rank_2_job[arr_status[i].MPI_SOURCE];
 				(*status).MPI_TAG = arr_status[i].MPI_TAG;
@@ -174,22 +192,31 @@ int wait_for_agg_request(void *agg, MPI_Status *status) {
 
 				return MPI_SUCCESS;
 			}
-		}*/
+		}
 
 		// TODO: IMPORTANT
 		// What if nodes associated with arr_status[0] dies?
 		// What happens then?
 
-		/**status = arr_status[0];
-		(*status).MPI_SOURCE = rank_2_job[arr_status[0].MPI_SOURCE];*/
+		*status = arr_status[0];
+		(*status).MPI_SOURCE = rank_2_job[arr_status[0].MPI_SOURCE];
 
 		Buffer_List *source_buf = agg_req->buf_list;
 		for(int i=0; i<wa_index; i++) {
 			source_buf = source_buf->next;
 		}
 
-		*status = wa_status;
-		(*status).MPI_SOURCE = rank_2_job[wa_status.MPI_SOURCE];
+		// Do remaining Irecv.
+		int worker_remaining = job_list[(*status).MPI_SOURCE].worker_count - 1;
+		if(agg_req->async_type == ANY_RECV) {
+			for(int i=0; i<worker_remaining; i++) {
+				PMPI_Irecv(__blackhole_address, agg_req->buffer_size, MPI_BYTE, MPI_ANY_SOURCE, agg_req->tag, node.rep_mpi_comm_world, &blackhole_request);
+			}
+		}
+
+
+		// *status = wa_status;
+		// (*status).MPI_SOURCE = rank_2_job[wa_status.MPI_SOURCE];
 
 		//log_i("Address: %p | %p", agg_req->original_buffer, source_buf->buf);
 		void *ori_buf = agg_req->original_buffer;
