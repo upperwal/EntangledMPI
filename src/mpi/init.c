@@ -1179,6 +1179,8 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int source, int tag, 
 	*request = (MPI_Request)agg_req;
 	__request_pending++;
 
+	agg_req->tag = tag;
+
 	int worker_count;
 
 	if(source == MPI_ANY_SOURCE) {
