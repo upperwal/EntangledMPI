@@ -17,7 +17,7 @@ func main() {
 	ranks := flag.Int("r", 0, "Total ranks spawnned")
 	choose := flag.Int("c", 0, "No of ranks to choose to replace in each iteration")
 	timeR := flag.Int("t", 15, "Time between replication map updates")
-	nosUpdates := flag.Int("u", 4, "Nos of update iteration")
+	nosUpdates := flag.Int("i", 4, "Nos of update iteration")
 	flag.Parse()
 
 	if *jobs == 0 || *ranks == 0 {
@@ -52,7 +52,7 @@ func main() {
 		/*for _jid, _j := range jm {
 			fmt.Println(_jid, _j.GetNumberOfRanks())
 		}*/
-
+		_jm.String()
 		_jm.WriteToFile("replication.map")
 
 		_jm.ResetModified()
@@ -105,6 +105,11 @@ type JobMap struct {
 	RepFile *os.File
 }
 
+type Rank struct {
+	Rank int
+	PrevJob int
+}
+
 func InitJobMap(j_no, r_no int) *JobMap {
 
 	jm := &JobMap{make(map[int]*Job, j_no), nil}
@@ -149,12 +154,12 @@ func (jm *JobMap) ResetModified() {
 	}
 }
 
-func (jm *JobMap) Choose(n int) []int {
-	c := make([]int, 0)
+func (jm *JobMap) Choose(n int) []Rank {
+	c := make([]Rank, 0)
 
 	uniformRandomForJobs := rng.NewUniformGenerator(time.Now().UnixNano())
 
-	for i := 0; i < len(jm.JMap); i++ {
+	for i := 0; i < len(jm.JMap) / 2; i++ {
 		if len(c) >= n {
 			return c
 		}
@@ -168,18 +173,19 @@ func (jm *JobMap) Choose(n int) []int {
 		randomRankIndex := int(uniformRandomForJobs.Int32n(2))
 
 		rank := jm.JMap[randomJob].GetRank(randomRankIndex)
-		c = append(c, rank)
+		c = append(c, Rank{rank, randomJob})
 		jm.JMap[randomJob].RemoveI(randomRankIndex)
+		jm.JMap[randomJob].Modified = 1
 	}
-
+	fmt.Println(c)
 	return c
 }
 
-func (jm *JobMap) Assign(newList []int) {
+func (jm *JobMap) Assign(newList []Rank) {
 	uniformRandomForJobs := rng.NewUniformGenerator(time.Now().UnixNano())
 	allocationCounter := 0
 
-	for i := 0; i < len(jm.JMap) * 2; i++ {
+	for len(newList) > allocationCounter {
 		if allocationCounter >= len(newList) {
 			break
 		}
@@ -190,12 +196,43 @@ func (jm *JobMap) Assign(newList []int) {
 			continue
 		}
 
-		jm.JMap[randomJob].InsertRank(newList[allocationCounter])
-		jm.JMap[randomJob].Modified = 1
-		allocationCounter++
+		if newList[allocationCounter].PrevJob != randomJob {
+			jm.JMap[randomJob].InsertRank(newList[allocationCounter].Rank)
+			jm.JMap[randomJob].Modified = 1
+			allocationCounter++
+		}
 	}
 
 	newList = newList[:0]
+}
+
+func (jm JobMap) String() {
+	fmt.Printf(strconv.Itoa(jm.CountTotalRanks()))
+	fmt.Printf("\t")
+	fmt.Printf(strconv.Itoa(len(jm.JMap)))
+	fmt.Printf("\n")
+
+	var keys []int
+    for k := range jm.JMap {
+        keys = append(keys, k)
+    }
+
+	sort.Ints(keys)
+	for _, k := range keys {
+		j := jm.JMap[k]
+		fmt.Printf(strconv.Itoa( j.Modified ))
+		fmt.Printf("\t")
+		fmt.Printf(strconv.Itoa( k ))
+		fmt.Printf("\t")
+		fmt.Printf(strconv.Itoa( len(j.RankList) ))
+
+		for _, v := range j.RankList {
+			fmt.Printf("\t")
+			fmt.Printf(strconv.Itoa( v ))
+		
+		}
+		fmt.Printf("\n")
+	} 
 }
 
 func (jm JobMap) WriteToFile(name string) {
