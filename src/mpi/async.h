@@ -23,16 +23,19 @@ typedef enum Async_Type { NONE, ANY_SEND, ANY_RECV, IRECV } Async_Type;
 
 typedef struct {
 	int request_count;
-	Request_List *list;
-	Buffer_List *buf_list;
+	MPI_Request *req_array;
+	//Request_List *list;
+	//Buffer_List *buf_list;
+	int *node_rank;
+	void *temp_buffer;
 	void *original_buffer;
-	int buffer_size;
+	size_t buffer_size;
 	Async_Type async_type;
 	int tag;
 
 } Aggregate_Request;
 
-Aggregate_Request *new_agg_request(void *, MPI_Datatype, int);
+Aggregate_Request *new_agg_request(void *, MPI_Datatype, int, int);
 MPI_Request *add_new_request_and_buffer(Aggregate_Request *, void **);
 int get_request_count(void *);
 MPI_Request *get_array_of_request(void *, int *);
