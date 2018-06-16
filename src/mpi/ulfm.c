@@ -67,7 +67,7 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
     	PMPI_Error_class(err, &eclass);
     }
 
-	log_i("Comm: %p | world: %p | Error: %d | Is W: %d | J: %d | A: %d", *pcomm, node.rep_mpi_comm_world, eclass == MPIX_ERR_PROC_FAILED, *pcomm == node.rep_mpi_comm_world, *pcomm == node.world_job_comm, *pcomm == node.active_comm);
+	debug_log_i("Comm: %p | world: %p | Error: %d | Is W: %d | J: %d | A: %d", *pcomm, node.rep_mpi_comm_world, eclass == MPIX_ERR_PROC_FAILED, *pcomm == node.rep_mpi_comm_world, *pcomm == node.world_job_comm, *pcomm == node.active_comm);
 
 	if(MPIX_ERR_PROC_FAILED != eclass) {
 		PMPI_Error_string(err, err_string, &err_len);
@@ -134,8 +134,8 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
 		if(*pcomm == node.rep_mpi_comm_world) {
 			// Creating an ignore map.
 			int size;
-			int *rank_arr_group_world_dup;
-			int *rank_failed_nodes;
+			int *rank_arr_failed_group;
+			int *rank_failed_nodes_in_world;
 
 			PMPIX_Comm_failure_ack(node.rep_mpi_comm_world);
 	    	PMPIX_Comm_failure_get_acked(node.rep_mpi_comm_world, &last_group_failed);
@@ -144,22 +144,28 @@ void rep_errhandler(MPI_Comm* pcomm, int* perr, ...) {
 
 	    	PMPI_Comm_group(node.rep_mpi_comm_world, &group_world_dup);
 
-	    	PMPI_Group_size(group_world_dup, &size);
+	    	PMPI_Group_size(last_group_failed, &size);
 
-	    	rank_failed_nodes = malloc(sizeof(int) * size);
-	    	rank_arr_group_world_dup = malloc(sizeof(int) * size);
+	    	rank_failed_nodes_in_world = malloc(sizeof(int) * size);
+	    	rank_arr_failed_group = malloc(sizeof(int) * size);
 	    	for(int i=0; i<size; i++) {
-				rank_arr_group_world_dup[i] = i;
+				rank_arr_failed_group[i] = i;
 			}
 
 			log_i("world_comm: %d", *pcomm == node.rep_mpi_comm_world);
 
-	    	PMPI_Group_translate_ranks(last_group_failed, size, rank_arr_group_world_dup, group_world_dup, rank_failed_nodes);
+	    	PMPI_Group_translate_ranks(last_group_failed, size, rank_arr_failed_group, group_world_dup, rank_failed_nodes_in_world);
 		
 			for(int i=0; i<size; i++) {
-				if(rank_failed_nodes[i] != MPI_UNDEFINED) {
-					log_i("Failed: %d | %d", rank_failed_nodes[i], i);
-					rank_ignore_list[ rank_failed_nodes[i] ] = 1;
+				if(rank_failed_nodes_in_world[i] != MPI_UNDEFINED) {
+					log_i("Failed: %d | %d", rank_failed_nodes_in_world[i], i);
+					rank_ignore_list[ rank_failed_nodes_in_world[i] ] = 1;
+
+					int job_id = rank_2_job[ rank_failed_nodes_in_world[i] ];
+					if(job_list[job_id].worker_count == 1) {
+						log_e("No Node left for %d job. Node %d failed", job_id, rank_failed_nodes_in_world[i]);
+						//PMPI_Abort(node.rep_mpi_comm_world, 600);
+					}
 				}
 			}
 		}
