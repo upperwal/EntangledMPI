@@ -33,6 +33,9 @@ int check_map_file_changes();
 #define JB_RSP	6
 #define JB_PC	7
 
+#define TEMP_STACK_SIZE 20000000
+#define TEMP_STACK_BOTTOM_OFFSET 500
+
 address getPC(jmp_buf);
 address getRBP(jmp_buf);
 address getRSP(jmp_buf);
