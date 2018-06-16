@@ -7,6 +7,10 @@ import (
 	"os"
 	"strconv"
 	"sort"
+	"bytes"
+	"encoding/binary"
+	"unsafe"
+	
 
 	"manager/rng"
 )
@@ -18,6 +22,7 @@ func main() {
 	choose := flag.Int("c", 0, "No of ranks to choose to replace in each iteration")
 	timeR := flag.Int("t", 15, "Time between replication map updates")
 	nosUpdates := flag.Int("i", 4, "Nos of update iteration")
+	repidxFilename := flag.String("rep", "rep_stack.info", "MPI program will save rep index and stack address in this file")
 	flag.Parse()
 
 	if *jobs == 0 || *ranks == 0 {
@@ -41,6 +46,9 @@ func main() {
 	fmt.Println("|-------------------------------|\n")
 
 	_jm := InitJobMap(*jobs, *ranks)
+
+	// Create checkpoint directory
+	os.Mkdir("./ckpt", 0775)
 	//jm := _jm.JMap
 	
 	for i := 0; i < *nosUpdates; i++ {
@@ -62,27 +70,36 @@ func main() {
 		if i < *nosUpdates - 1 {
 			time.Sleep(dur)
 		}
+
+		//for _jm.InitStackData(*repidxFilename, i != 0) {}
+		_jm.InitStackData(*repidxFilename, i != 0)
 	}
 	
 }
 
+type Rank struct {
+	Rank int
+	PrevJob int
+	StackAdd uint64
+}
+
 type Job struct {
 	JobID int
-	RankList []int
+	RankList []Rank
 	Modified int
 }
 
 func NewJob(jobID int) *Job {
-	return &Job{jobID, make([]int, 0), 1}
+	return &Job{jobID, make([]Rank, 0), 1}
 }
 
-func (j *Job) InsertRank(rank int) {
+func (j *Job) InsertRank(rank Rank) {
 	j.RankList = append(j.RankList, rank)
 }
 
-func (j Job) GetRank(i int) int {
+func (j Job) GetRank(i int) Rank {
 	if len(j.RankList) < i+1 {
-		return -1
+		return Rank{}
 	}
 
 	return j.RankList[i]
@@ -103,23 +120,19 @@ func (j Job) String() string {
 type JobMap struct {
 	JMap map[int]*Job
 	RepFile *os.File
-}
-
-type Rank struct {
-	Rank int
-	PrevJob int
+	RepIDx int
 }
 
 func InitJobMap(j_no, r_no int) *JobMap {
 
-	jm := &JobMap{make(map[int]*Job, j_no), nil}
+	jm := &JobMap{make(map[int]*Job, j_no), nil, 0}
 
 	for i := 0; i < j_no; i++ {
 		jm.JMap[i] = NewJob(i)
 	}
 
 	for i := 0; i < r_no; i++ {
-		jm.JMap[i % j_no].InsertRank(i)
+		jm.JMap[i % j_no].InsertRank(Rank{i, -1, 0})
 	}
 
 	return jm
@@ -173,7 +186,7 @@ func (jm *JobMap) Choose(n int) []Rank {
 		randomRankIndex := int(uniformRandomForJobs.Int32n(2))
 
 		rank := jm.JMap[randomJob].GetRank(randomRankIndex)
-		c = append(c, Rank{rank, randomJob})
+		c = append(c, rank)
 		jm.JMap[randomJob].RemoveI(randomRankIndex)
 		jm.JMap[randomJob].Modified = 1
 	}
@@ -196,8 +209,8 @@ func (jm *JobMap) Assign(newList []Rank) {
 			continue
 		}
 
-		if newList[allocationCounter].PrevJob != randomJob {
-			jm.JMap[randomJob].InsertRank(newList[allocationCounter].Rank)
+		if newList[allocationCounter].PrevJob != randomJob && jm.JMap[randomJob].RankList[0].StackAdd == newList[allocationCounter].StackAdd {
+			jm.JMap[randomJob].InsertRank(newList[allocationCounter])
 			jm.JMap[randomJob].Modified = 1
 			allocationCounter++
 		}
@@ -228,7 +241,7 @@ func (jm JobMap) String() {
 
 		for _, v := range j.RankList {
 			fmt.Printf("\t")
-			fmt.Printf(strconv.Itoa( v ))
+			fmt.Printf(strconv.Itoa( v.Rank ))
 		
 		}
 		fmt.Printf("\n")
@@ -258,7 +271,7 @@ func (jm JobMap) WriteToFile(name string) {
 
 		for _, v := range j.RankList {
 			jm.RepFile.WriteString("\t")
-			jm.RepFile.WriteString(strconv.Itoa( v ))
+			jm.RepFile.WriteString(strconv.Itoa( v.Rank ))
 		
 		}
 		jm.RepFile.WriteString("\n")
@@ -272,4 +285,67 @@ func (jm JobMap) WriteToFile(name string) {
 	jm.CloseRepFile()
 
 
+}
+
+type StackAddrRepIdx struct {
+	RepIDx int32
+	Rank int32
+	StackAdd uint64
+}
+
+type Header struct {
+	UserDataMaxSize uint32
+	HeaderOffset uint32
+	UserDataSize uint32
+	_ [5]byte
+	Starcraft2 [22]byte
+}
+
+func (jm *JobMap) InitStackData(fileName string, onlyRepIDx bool) bool {
+	file, err := os.Open(fileName)
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+
+	mappings := make(map[int32]uint64)
+
+	data := make([]byte, unsafe.Sizeof(StackAddrRepIdx{}))
+
+	stackInfo := StackAddrRepIdx{}
+	for {
+		_, err = file.Read(data)
+		if err != nil {
+			break
+		}
+
+		buffer := bytes.NewBuffer(data)
+		err = binary.Read(buffer, binary.LittleEndian, &stackInfo)
+		if err != nil {
+			panic(err)
+		}
+
+		if onlyRepIDx {
+			if stackInfo.RepIDx != int32(jm.RepIDx) {
+				jm.RepIDx = int(stackInfo.RepIDx)
+				return false
+			}
+			return true
+		}
+
+		mappings[stackInfo.Rank] = uint64(stackInfo.StackAdd)
+
+		fmt.Printf("Parse data: Rank: %d | StackAdd: %#x\n", stackInfo.Rank, stackInfo.StackAdd)
+	}
+
+	jm.RepIDx = int(stackInfo.RepIDx)
+
+	for _, j := range jm.JMap {
+		for r, _ := range j.RankList {
+			j.RankList[r].StackAdd = mappings[int32(j.RankList[r].Rank)]
+		}
+	}
+
+	return true
 }
