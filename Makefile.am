@@ -1,4 +1,5 @@
-AM_CFLAGS = $(REP_CFLAGS) -g -O0 -fpic
+LIB_FLAGS = -g -O3
+AM_CFLAGS = $(REP_CFLAGS) $(LIB_FLAGS) -fpic
 
 export GOPATH = @abs_srcdir@
 

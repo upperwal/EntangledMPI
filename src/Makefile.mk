@@ -1,6 +1,6 @@
 lib_LTLIBRARIES += libreplication.la
 libreplication_la_SOURCES =  
-libreplication_la_CFLAGS = $(REP_CFLAGS) -g -O0 -shared
+libreplication_la_CFLAGS = $(REP_CFLAGS) $(LIB_FLAGS) -shared
 
 noinst_HEADERS = src/shared.h
 
