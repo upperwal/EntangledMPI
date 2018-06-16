@@ -20,6 +20,9 @@ extern Malloc_list *head;
 extern int __pass_sender_cont_add;
 extern int __pass_receiver_cont_add;
 
+extern double ___ckpt_time[MAX_CKPT];
+extern int ___ckpt_counter;
+
 void init_ckpt(char *file_name) {
 	debug_log_i("Init Ckpt");
 
@@ -29,10 +32,15 @@ void init_ckpt(char *file_name) {
 	
 	ckpt_file = fopen(file, "wb");
 
+	// Timer start
+	___ckpt_time[___ckpt_counter] = PMPI_Wtime();
+
 	save_data_seg();
 	save_stack_seg();
 	save_heap_seg();
 	save_framework_data();
+
+	___ckpt_time[___ckpt_counter] = PMPI_Wtime() - ___ckpt_time[___ckpt_counter];
 
 	fclose(ckpt_file);
 }
@@ -140,11 +148,11 @@ void restore_stack_seg() {
 	fread(&processContext, sizeof(Context), 1, ckpt_file);
 	fread(&stack_size, sizeof(size_t), 1, ckpt_file);
 
-	setPC(context, processContext.rip);
-	setRSP(context, processContext.rsp);
-	setRBP(context, processContext.rbp);
-
 	stackLowerAddress = stackHigherAddress - (stack_size - 4); 
+
+	setPC(context, processContext.rip);
+	setRSP(context, stackLowerAddress);
+	setRBP(context, processContext.rbp + (stackLowerAddress - processContext.rsp) );
 
 	fread((void *)stackLowerAddress, 1, stack_size, ckpt_file);
 
