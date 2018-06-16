@@ -4,7 +4,7 @@ extern Node node;
 extern Job *job_list;
 extern int *rank_2_job;
 
-extern enum CkptBackup ckpt_backup;
+extern enum CkptRestore ckpt_restore;
 
 extern MPI_Errhandler ulfm_err_handler;
 
@@ -31,7 +31,7 @@ int init_node(char *file_name, Job **job_list, Node *node) {
 	// job id 0 in the map file will not be initiated properly.
 	(*node).job_id = -1;
 
-	parse_map_file(file_name, job_list, node, &ckpt_backup);
+	parse_map_file(file_name, job_list, node, &ckpt_restore);
 	update_comms();
 
 	// parse_map_file will set "node_transit_state" to "NODE_DATA_RECEIVER"
@@ -44,9 +44,9 @@ int init_node(char *file_name, Job **job_list, Node *node) {
 	}*/
 }
 
-int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup *ckpt_backup) {
+int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptRestore *ckpt_restore) {
 	
-	if(*ckpt_backup == BACKUP_YES) {
+	if(*ckpt_restore == RESTORE_YES) {
 		return 0;
 	}
 
@@ -141,7 +141,7 @@ int parse_map_file(char *file_name, Job **job_list, Node *node, enum CkptBackup 
 		debug_log_i("[Rep File Update] MyJobId: %d | Job ID: %d | Worker Count: %d | Worker 1: %d | Worker 2: %d | Checkpoint: %d", (*node).job_id, (*job_list)[i].job_id, (*job_list)[i].worker_count, (*job_list)[i].rank_list[0], (*job_list)[i].rank_list[1], (*node).node_checkpoint_master);
 	}
 
-	debug_log_i("node_transit_state: Sender: %d | Recv: %d | None: %d", (*node).node_transit_state = NODE_DATA_SENDER, (*node).node_transit_state = NODE_DATA_RECEIVER, (*node).node_transit_state = NODE_DATA_NONE);
+	debug_log_i("node_transit_state: Sender: %d | Recv: %d | None: %d", (*node).node_transit_state == NODE_DATA_SENDER, (*node).node_transit_state == NODE_DATA_RECEIVER, (*node).node_transit_state == NODE_DATA_NONE);
 }
 
 // responsible to update 'world_job_comm' and 'active_comm' [defined in src/shared.h]
@@ -206,16 +206,16 @@ void release_comm_lock() {
 }
 
 /* Returns 1 if comm is valid on this node, else 0. */
-int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptBackup *ckpt_backup) {
+int create_migration_comm(MPI_Comm *job_comm, int *rep_flag, enum CkptRestore *ckpt_restore) {
 	/* 								this^
 	*  This comm will contain all the processes which are either sending or receiving 
 	*  replication data. 
 	*/
 	int color, key, flag;
 
-	if(*ckpt_backup == BACKUP_YES) {
-		return 1;
+	if(*ckpt_restore == RESTORE_YES) {
 		*rep_flag = 0;
+		return 1;
 	}
 
 	// TODO: Comm was getting corrupted (review this)

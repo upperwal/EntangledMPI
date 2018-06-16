@@ -10,9 +10,9 @@
 #define __COMM_H__
 
 int init_node(char *, Job **, Node *);
-int parse_map_file(char *, Job **, Node *, enum CkptBackup *);
+int parse_map_file(char *, Job **, Node *, enum CkptRestore *);
 
-int create_migration_comm(MPI_Comm *, int *, enum CkptBackup *);
+int create_migration_comm(MPI_Comm *, int *, enum CkptRestore *);
 
 void update_comms();
 void release_comm_lock();
