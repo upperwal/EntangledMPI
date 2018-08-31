@@ -11,12 +11,13 @@ noinst_PROGRAMS = 	rep_test 				\
 					reduce_test 			\
 					allreduce_test 			\
 					ulfm_test 				\
-					rep_collective_test
+					rep_collective_test 	\
+					isend_irecv_test
 
 rep_test_LDADD = libreplication.la 
 rep_test_SOURCES = test/rep_test.c
 rep_test_LDFLAGS = -no-install
-rep_test_CFLAGS = -g $(AM_CFLAGS)
+rep_test_CFLAGS = $(AM_CFLAGS)
 
 data_seg_trans_test_LDADD = libreplication.la
 data_seg_trans_test_SOURCES = test/dataseg_transfer_test.c
@@ -81,4 +82,9 @@ ulfm_test_CFLAGS = $(AM_CFLAGS)
 rep_collective_test_LDADD = libreplication.la
 rep_collective_test_SOURCES = test/rep_collective_test.c
 rep_collective_test_LDFLAGS = -no-install
-rep_collective_test_CFLAGS = -g $(AM_CFLAGS)
+rep_collective_test_CFLAGS = $(AM_CFLAGS)
+
+isend_irecv_test_LDADD = libreplication.la
+isend_irecv_test_SOURCES = test/isend_irecv_test.c
+isend_irecv_test_LDFLAGS = -no-install
+isend_irecv_test_CFLAGS = $(AM_CFLAGS)

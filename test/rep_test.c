@@ -8,6 +8,8 @@
 
 int initSeg = 80;
 
+extern Node node;
+
 // adding Node node here will result in node variable defined in MPI user's address space
 // and not in libreplication address space.
 //extern Node node;
@@ -54,7 +56,7 @@ int main(int argc, char** argv){
 
 	MPI_Init(&argc, &argv);
 
-	MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+	//MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 
 	pid_t pid;
 
@@ -122,10 +124,11 @@ int main(int argc, char** argv){
 		printf("[User Code] BEFORE 4 | Rank: %d\n", rank);
 	}
 
-	printf("[User Code] Rank: %d\n", rank);
+	
 
 	
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	printf("[User Code] Rank: %d\n", rank);
 
 	if(rank == 0)
 		printf("[Heap Seg] Rank: %d | [Users program] Value: %d | address: %p\n", rank, *a, a);
@@ -176,7 +179,7 @@ int main(int argc, char** argv){
 			printf("[Send recv Data] Rank: %d | FAIL\n", rank);
 	}
 
-	printf("***Before Finalize\n");
+	printf("***Before Finalize %d\n", node.rank);
 	MPI_Finalize();
-	printf("******END of User Program\n");
+	printf("******END of User Program %d\n", node.rank);
 }

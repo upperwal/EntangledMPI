@@ -7,7 +7,7 @@
 #ifndef __SHARED_H__
 #define __SHARED_H__
 
-#define DEBUG
+#define DEBUGG
 
 // Map is a file or API response which maps compute node to a replica node. If the
 // hash of the file/API is changed MAP_UPDATED status is used.
@@ -30,11 +30,19 @@ typedef uint64_t address;
         asm ("mov %%rbp, %0\n\t" \
         : "=r" (variable));
 
+#define SET_TAG(rank, tag) 100 * (rank + 1) + tag
 
+#define CKPT_FILE_NAME "./ckpt/rank-%d.ckpt"
+#define STACK_REP_INFO_FILE_NAME "./rep_stack.info" 
 
 enum NodeTransitState { NODE_DATA_NONE, NODE_DATA_SENDER, NODE_DATA_RECEIVER };
 enum NodeCheckpointMaster { NO, YES };
-enum CkptBackup { BACKUP_NO, BACKUP_YES };
+enum CkptRestore { RESTORE_NO, RESTORE_YES };
+
+// Timing related variables
+#define MAX_REP 100
+#define MAX_CKPT 100
+
 /* 
 *  Structure to hold each node's new rank. This will work as a wrapper to 
 *  existing comms 
